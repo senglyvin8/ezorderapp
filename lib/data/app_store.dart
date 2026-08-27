@@ -8,6 +8,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../config/app_config.dart';
 import '../l10n/app_text.dart';
 import '../models/cart_line.dart';
+import '../models/date_range.dart';
 import '../models/menu_category.dart';
 import '../models/menu_item.dart';
 import '../models/order.dart';
@@ -232,22 +233,86 @@ class AppStore extends ChangeNotifier {
     );
   }
 
-  /// Today's figures for the admin dashboard.
-  ({int orders, double revenue, int pending, int completed}) get todaySummary {
+  /// Orders inside [range], newest first. The report's one source of truth —
+  /// the figures and the export both read this, so they cannot disagree.
+  List<Order> ordersIn(ReportRange range) {
     final now = DateTime.now();
-    bool isToday(DateTime d) =>
-        d.year == now.year && d.month == now.month && d.day == now.day;
+    final list = _data.orders
+        .where((o) => range.contains(o.createdAt, now: now))
+        .toList()
+      ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+    return list;
+  }
 
-    final today = _data.orders.where((o) => isToday(o.createdAt)).toList();
-    final revenue = today
+  /// Headline figures for a report window.
+  ///
+  /// Revenue counts only money actually taken — paid and completed. A
+  /// cancelled order earns nothing, and an order still on the stove has not
+  /// earned anything yet.
+  ({
+    int orders,
+    double revenue,
+    int pending,
+    int completed,
+    int cancelled,
+    int dishes,
+    double average,
+  }) summaryFor(ReportRange range) {
+    final orders = ordersIn(range);
+    final settled = orders
         .where((o) =>
             o.status == OrderStatus.paid || o.status == OrderStatus.completed)
-        .fold<double>(0, (sum, o) => sum + o.total);
+        .toList();
+    final revenue = settled.fold<double>(0, (sum, o) => sum + o.total);
     return (
-      orders: today.length,
+      orders: orders.length,
       revenue: revenue,
-      pending: today.where((o) => o.status.isActive).length,
-      completed: today.where((o) => o.status == OrderStatus.completed).length,
+      pending: orders.where((o) => o.status.isActive).length,
+      completed:
+          orders.where((o) => o.status == OrderStatus.completed).length,
+      cancelled:
+          orders.where((o) => o.status == OrderStatus.cancelled).length,
+      dishes: orders
+          .where((o) => o.status != OrderStatus.cancelled)
+          .fold<int>(0, (sum, o) => sum + o.itemCount),
+      // Averaged over orders that were actually paid for; dividing takings by
+      // a count that includes cancellations would understate every ticket.
+      average: settled.isEmpty ? 0 : revenue / settled.length,
+    );
+  }
+
+  /// What sold, most first — the question an owner actually asks of a report.
+  List<({String name, int quantity, double revenue})> topDishes(
+    ReportRange range, {
+    int limit = 10,
+  }) {
+    final counts = <String, ({int quantity, double revenue})>{};
+    for (final order in ordersIn(range)) {
+      if (order.status == OrderStatus.cancelled) continue;
+      for (final item in order.items) {
+        final current = counts[item.name] ?? (quantity: 0, revenue: 0.0);
+        counts[item.name] = (
+          quantity: current.quantity + item.quantity,
+          revenue: current.revenue + item.lineTotal,
+        );
+      }
+    }
+    final list = counts.entries
+        .map((e) =>
+            (name: e.key, quantity: e.value.quantity, revenue: e.value.revenue))
+        .toList()
+      ..sort((a, b) => b.quantity.compareTo(a.quantity));
+    return list.take(limit).toList();
+  }
+
+  /// Today's figures for the admin dashboard.
+  ({int orders, double revenue, int pending, int completed}) get todaySummary {
+    final s = summaryFor(const ReportRange.today());
+    return (
+      orders: s.orders,
+      revenue: s.revenue,
+      pending: s.pending,
+      completed: s.completed,
     );
   }
 

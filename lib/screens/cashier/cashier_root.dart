@@ -9,6 +9,8 @@ import '../../theme/app_theme.dart';
 import '../../widgets/app_chrome.dart';
 import '../../widgets/card_grid.dart';
 import '../../widgets/order_ticket.dart';
+import '../../widgets/report_panel.dart';
+import '../../widgets/work_alert.dart';
 import 'edit_order_sheet.dart';
 import 'invoice_screen.dart';
 import 'new_order_screen.dart';
@@ -19,8 +21,10 @@ import 'payment_dialog.dart';
 /// Three tabs, because the till is also the front desk: **Live** is every
 /// order in the restaurant right now — including the ones the kitchen has not
 /// touched yet, which are the only ones that can still be cancelled — **To
-/// pay** is Rule 7's queue (READY -> PAID -> COMPLETED), and **Closed** is the
-/// day's history.
+/// pay** is Rule 7's queue (READY -> PAID -> COMPLETED), **Closed** is the
+/// day's history, and **Report** is the same takings report the owner sees —
+/// a cashier closing up asks exactly the same question, and sending them to
+/// find an admin for it would be silly.
 class CashierRoot extends StatefulWidget {
   const CashierRoot({super.key});
 
@@ -102,8 +106,15 @@ class _CashierRootState extends State<CashierRoot> {
             _isToday(o.paidAt ?? o.createdAt))
         .fold<double>(0, (sum, o) => sum + o.total);
 
-    return DefaultTabController(
-      length: 3,
+    // The till's alert is about money waiting, not work arriving: an order
+    // reaching READY is the moment somebody has to go and take payment.
+    return WorkAlert(
+      count: ready.length,
+      message: t.readyToPayNow(ready.length),
+      color: AppColors.statusReady,
+      icon: Icons.point_of_sale_rounded,
+      child: DefaultTabController(
+      length: 4,
       child: Scaffold(
         backgroundColor: AppColors.surface,
         floatingActionButton: FloatingActionButton.extended(
@@ -126,11 +137,14 @@ class _CashierRootState extends State<CashierRoot> {
                 border: Border(bottom: BorderSide(color: AppColors.border)),
               ),
               child: TabBar(
+                // Four labels, and Khmer ones are long: scrolling beats
+                // four columns of ellipsis.
+                isScrollable: true,
+                tabAlignment: TabAlignment.start,
                 labelColor: AppColors.brandDark,
                 unselectedLabelColor: AppColors.inkSoft,
                 indicatorColor: AppColors.brand,
                 indicatorWeight: 3,
-                indicatorSize: TabBarIndicatorSize.tab,
                 dividerColor: Colors.transparent,
                 labelStyle: const TextStyle(
                     fontSize: 14.5, fontWeight: FontWeight.w800),
@@ -140,6 +154,7 @@ class _CashierRootState extends State<CashierRoot> {
                   Tab(text: '${t.liveOrders} (${live.length})'),
                   Tab(text: '${t.toPay} (${ready.length})'),
                   Tab(text: t.closed),
+                  Tab(text: t.report),
                 ],
               ),
             ),
@@ -267,8 +282,10 @@ class _CashierRootState extends State<CashierRoot> {
                     ),
                 ],
               ),
+            const ReportPanel(),
           ],
         ),
+      ),
       ),
     );
   }

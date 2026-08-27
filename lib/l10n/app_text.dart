@@ -419,6 +419,36 @@ class AppText {
   String get invoiceNotFound => _('Invoice not found', 'រកមិនឃើញវិក្កយបត្រ');
   String get discountLine => _('Discount', 'បញ្ចុះតម្លៃ');
 
+  // ----------------------------------------------------------------- report
+  String get report => _('Report', 'របាយការណ៍');
+
+  // ------------------------------------------------------------------ alerts
+  String newOrdersArrived(int count) => count == 1
+      ? _('New order in', 'មានការបញ្ជាទិញថ្មី')
+      : _('$count new orders in', 'មានការបញ្ជាទិញថ្មី $count');
+  String readyToPayNow(int count) => count == 1
+      ? _('An order is ready to pay', 'មានការបញ្ជាទិញរួចរាល់ទូទាត់')
+      : _('$count orders ready to pay', 'ការបញ្ជាទិញរួចរាល់ទូទាត់ $count');
+  String get rangeToday => _('Today', 'ថ្ងៃនេះ');
+  String get rangeWeek => _('This week', 'សប្តាហ៍នេះ');
+  String get rangeMonth => _('This month', 'ខែនេះ');
+  String get rangeAll => _('All time', 'ទាំងអស់');
+  String get rangeCustom => _('Dates', 'កាលបរិច្ឆេទ');
+  String get pickDates => _('Pick a date range', 'ជ្រើសរើសចន្លោះកាលបរិច្ឆេទ');
+  String get exportCsv => _('Export to Excel', 'នាំចេញទៅ Excel');
+  String exported(String name) => _('Saved $name', 'បានរក្សាទុក $name');
+  String get nothingToExport =>
+      _('No orders in this range', 'មិនមានការបញ្ជាទិញក្នុងចន្លោះនេះ');
+  String get exportFailed =>
+      _('Could not save the file', 'មិនអាចរក្សាទុកឯកសារបានទេ');
+  String get topDishes => _('Best sellers', 'មុខម្ហូបលក់ដាច់');
+  String get averageOrder => _('Average order', 'ជាមធ្យមក្នុងមួយការបញ្ជាទិញ');
+  String get dishesSold => _('Dishes sold', 'មុខម្ហូបបានលក់');
+  String get cancelledCount => _('Cancelled', 'បានលុបចោល');
+  String soldCount(int count) => count == 1
+      ? _('1 sold', 'លក់បាន ១')
+      : _('$count sold', 'លក់បាន $count');
+
   // --------------------------------------------------------------- admin nav
   String get dashboard => _('Dashboard', 'ផ្ទាំងគ្រប់គ្រង');
   String get orders => _('Orders', 'ការបញ្ជាទិញ');

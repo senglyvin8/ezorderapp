@@ -8,6 +8,7 @@ import '../../theme/app_theme.dart';
 import '../../widgets/app_chrome.dart';
 import '../../widgets/card_grid.dart';
 import '../../widgets/order_ticket.dart';
+import '../../widgets/work_alert.dart';
 
 /// Kitchen display, deliberately two tabs.
 ///
@@ -38,7 +39,14 @@ class KitchenRoot extends StatelessWidget {
     final dishesWaiting =
         working.fold<int>(0, (sum, o) => sum + o.itemCount);
 
-    return DefaultTabController(
+    // Counted from what is queued, not from every live order: a ticket
+    // moving on to the stove must not read as a new one arriving.
+    return WorkAlert(
+      count: counts.waiting,
+      message: t.newOrdersArrived(counts.waiting),
+      color: AppColors.statusNew,
+      icon: Icons.ramen_dining_rounded,
+      child: DefaultTabController(
       length: 2,
       child: Scaffold(
         backgroundColor: AppColors.surface,
@@ -143,6 +151,7 @@ class KitchenRoot extends StatelessWidget {
               ),
           ],
         ),
+      ),
       ),
     );
   }

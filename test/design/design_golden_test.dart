@@ -219,6 +219,23 @@ void main() {
     await shoot(tester, '15-table-picker');
   });
 
+  testWidgets(skip: !_enabled, 'the report with a range and an export',
+      (tester) async {
+    final store = await pump(tester);
+    await signIn(tester, store, StaffRole.admin);
+    await tester.pumpAndSettle();
+    await shoot(tester, '17-report-today');
+  });
+
+  testWidgets(skip: !_enabled, 'the report over all time', (tester) async {
+    final store = await pump(tester);
+    await signIn(tester, store, StaffRole.admin);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text(store.text.rangeAll));
+    await tester.pumpAndSettle();
+    await shoot(tester, '18-report-all-time');
+  });
+
   testWidgets(skip: !_enabled, 'admin dashboard', (tester) async {
     final store = await pump(tester);
     await signIn(tester, store, StaffRole.admin);

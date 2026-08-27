@@ -441,7 +441,7 @@ class _BasketSheet extends StatelessWidget {
         top: false,
         child: ConstrainedBox(
           constraints: BoxConstraints(
-            maxHeight: MediaQuery.sizeOf(context).height * 0.85,
+            maxHeight: sheetMaxHeight(context, fraction: 0.85),
           ),
           child: SingleChildScrollView(
             padding: const EdgeInsets.fromLTRB(20, 18, 20, 20),

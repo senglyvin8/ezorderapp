@@ -9,6 +9,7 @@ import 'package:restaurant_qr_ordering/l10n/app_text.dart';
 import 'package:restaurant_qr_ordering/models/order.dart';
 import 'package:restaurant_qr_ordering/models/staff_account.dart';
 import 'package:restaurant_qr_ordering/widgets/cart_summary_bar.dart';
+import 'package:restaurant_qr_ordering/widgets/food_image.dart';
 import 'package:restaurant_qr_ordering/widgets/order_ticket.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -511,6 +512,39 @@ void main() {
       expect(store.orderType, OrderType.takeaway);
       expect(store.cartItemCount, 1);
       expect(tester.takeException(), isNull);
+    });
+  });
+
+  group('typing with the keyboard up', () {
+    testWidgets('the dish sheet stays on screen and its note field is reachable',
+        (tester) async {
+      final store = await pumpApp(tester, size: const Size(400, 800));
+      store.openTable(store.tableByNumber('05')!.id);
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byType(FoodImage).first);
+      await tester.pumpAndSettle();
+      expect(find.text(store.text.specialRequest), findsOneWidget);
+
+      // A keyboard covering more than half the screen. The sheet lifts itself
+      // by that much, so if it is still sized against the *whole* screen it
+      // becomes taller than the room left. A ConstrainedBox is not clamped by
+      // the space its parent has — it keeps its maxHeight and overflows — and
+      // in a bottom-anchored sheet that overflow goes off the top, taking the
+      // note field with it.
+      tester.view.viewInsets = const FakeViewPadding(bottom: 427);
+      addTearDown(tester.view.resetViewInsets);
+      await tester.pumpAndSettle();
+
+      expect(tester.takeException(), isNull,
+          reason: 'the sheet must fit the space the keyboard leaves');
+      // The action carries the running total alongside the label.
+      final addToCart = find.textContaining(store.text.addToCart);
+      expect(addToCart, findsOneWidget,
+          reason: 'and its action bar must still be on screen');
+      final action = tester.getRect(addToCart);
+      expect(action.bottom, lessThanOrEqualTo(800 - 427 + 1),
+          reason: 'sitting above the keyboard, not behind it');
     });
   });
 

@@ -63,7 +63,7 @@ class _TablePickerSheet extends StatelessWidget {
       top: false,
       child: ConstrainedBox(
         constraints: BoxConstraints(
-          maxHeight: MediaQuery.sizeOf(context).height * 0.8,
+          maxHeight: sheetMaxHeight(context, fraction: 0.8),
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,

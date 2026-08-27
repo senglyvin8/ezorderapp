@@ -169,7 +169,7 @@ class _MenuItemEditorState extends State<_MenuItemEditor> {
         top: false,
         child: ConstrainedBox(
           constraints: BoxConstraints(
-            maxHeight: MediaQuery.sizeOf(context).height * 0.92,
+            maxHeight: sheetMaxHeight(context, fraction: 0.92),
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,

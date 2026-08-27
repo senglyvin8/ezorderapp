@@ -256,6 +256,21 @@ InputDecoration appInput({
   );
 }
 
+/// How tall a bottom sheet may be, given whatever the keyboard is covering.
+///
+/// A sheet that lifts itself by `viewInsets.bottom` and *then* asks for a
+/// fraction of the *whole* screen ends up taller than the room it has left. The
+/// overflow goes off the top — which is exactly where the field being typed
+/// into usually is, so the keyboard appears and the text box vanishes.
+///
+/// Measure the space that is actually free instead.
+double sheetMaxHeight(BuildContext context, {double fraction = 0.9}) {
+  final media = MediaQuery.of(context);
+  final free = media.size.height - media.viewInsets.bottom;
+  // Never collapse to nothing on a small screen with a tall keyboard.
+  return (free * fraction).clamp(220.0, media.size.height);
+}
+
 /// Rounded confirmation dialog used before any irreversible action.
 Future<bool> confirmDialog(
   BuildContext context, {

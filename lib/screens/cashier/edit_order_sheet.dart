@@ -67,7 +67,7 @@ class _EditOrderSheet extends StatelessWidget {
       top: false,
       child: ConstrainedBox(
         constraints: BoxConstraints(
-          maxHeight: MediaQuery.sizeOf(context).height * 0.85,
+          maxHeight: sheetMaxHeight(context, fraction: 0.85),
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,

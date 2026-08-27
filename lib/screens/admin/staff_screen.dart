@@ -262,7 +262,7 @@ class _StaffEditorState extends State<_StaffEditor> {
         top: false,
         child: ConstrainedBox(
           constraints: BoxConstraints(
-            maxHeight: MediaQuery.sizeOf(context).height * 0.9,
+            maxHeight: sheetMaxHeight(context, fraction: 0.9),
           ),
           child: SingleChildScrollView(
             padding: const EdgeInsets.fromLTRB(20, 18, 20, 20),

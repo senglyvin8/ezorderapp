@@ -59,7 +59,7 @@ class _FoodDetailSheetState extends State<FoodDetailSheet> {
         top: false,
         child: ConstrainedBox(
           constraints: BoxConstraints(
-            maxHeight: MediaQuery.sizeOf(context).height * 0.9,
+            maxHeight: sheetMaxHeight(context, fraction: 0.9),
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,

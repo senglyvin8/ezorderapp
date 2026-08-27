@@ -111,7 +111,7 @@ class SupabaseBackend implements Backend {
 
         final restaurant = await _client
             .from('restaurants')
-            .select()
+            .select(_restaurantColumns)
             .eq('slug', BackendConfig.slug)
             .maybeSingle();
 
@@ -276,7 +276,7 @@ class SupabaseBackend implements Backend {
     if (_restaurantId == null) return;
     final restaurant = await _client
         .from('restaurants')
-        .select()
+        .select(_restaurantColumns)
         .eq('id', _restaurantId!)
         .single();
     _cache = await _fetchAll(restaurant);
@@ -443,6 +443,13 @@ class SupabaseBackend implements Backend {
   }
 
   static const String _photoBucket = 'menu-photos';
+
+  /// Named rather than `*` on purpose. `next_order_number` is revoked from
+  /// clients — it is a business metric anyone could otherwise poll — and a
+  /// star select would fail the moment a column is not granted.
+  static const String _restaurantColumns =
+      'id,slug,name,name_km,logo,phone,address,'
+      'currency_symbol,currency_code,payment_methods,plan';
 
   /// Enough uniqueness for a filename; the row's own id is not available yet
   /// when a dish is being created.

@@ -35,12 +35,15 @@ class _AdminRootState extends State<AdminRoot> {
       (icon: Icons.tune_rounded, label: t.more),
     ];
 
-    const pages = [
-      AdminDashboardScreen(),
-      KitchenRoot(),
-      CashierRoot(),
-      AdminOrdersScreen(),
-      ManageScreen(),
+    // An IndexedStack keeps every tab built, so the kitchen and the till are
+    // both live whichever one is on screen. Only the tab in front may make a
+    // noise — otherwise the owner hears a chime with nothing to look at.
+    final pages = [
+      const AdminDashboardScreen(),
+      KitchenRoot(alerts: _index == 1),
+      CashierRoot(alerts: _index == 2),
+      const AdminOrdersScreen(),
+      const ManageScreen(),
     ];
 
     final wide = MediaQuery.sizeOf(context).width >= 820;

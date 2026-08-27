@@ -78,4 +78,47 @@ void main() {
     expect(find.text('board'), findsOneWidget,
         reason: 'the banner overlays, it does not replace');
   });
+
+  group('a board nobody is looking at', () {
+    // The admin workspace keeps the kitchen and the till in an IndexedStack,
+    // so both are built and both receive updates whichever one is painted.
+    Future<void> pumpDisabled(WidgetTester tester, int count) async {
+      await tester.pumpWidget(MaterialApp(
+        home: WorkAlert(
+          count: count,
+          message: '$count waiting',
+          enabled: false,
+          child: const Scaffold(body: Center(child: Text('board'))),
+        ),
+      ));
+    }
+
+    testWidgets('makes no noise and shows no banner', (tester) async {
+      await pumpDisabled(tester, 0);
+      await pumpDisabled(tester, 3);
+      await tester.pump(const Duration(milliseconds: 300));
+
+      expect(find.text('3 waiting'), findsNothing,
+          reason: 'a chime from a tab you cannot see is a noise with no cause');
+    });
+
+    testWidgets('does not save the alert up for when it is looked at',
+        (tester) async {
+      // Switching to the tab must not then fire for everything that arrived
+      // while it was hidden.
+      await pumpDisabled(tester, 0);
+      await pumpDisabled(tester, 5);
+      await tester.pump(const Duration(milliseconds: 300));
+
+      await tester.pumpWidget(const MaterialApp(
+        home: WorkAlert(
+          count: 5,
+          message: '5 waiting',
+          child: Scaffold(body: Center(child: Text('board'))),
+        ),
+      ));
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(find.text('5 waiting'), findsNothing);
+    });
+  });
 }

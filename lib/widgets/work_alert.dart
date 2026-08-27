@@ -29,6 +29,7 @@ class WorkAlert extends StatefulWidget {
     required this.child,
     this.color = AppColors.statusNew,
     this.icon = Icons.notifications_active_rounded,
+    this.enabled = true,
   });
 
   /// How many things currently need attention. An increase is the alert.
@@ -40,6 +41,18 @@ class WorkAlert extends StatefulWidget {
   final Widget child;
   final Color color;
   final IconData icon;
+
+  /// False when this board is mounted but not being looked at.
+  ///
+  /// The admin workspace keeps the kitchen and the till in an IndexedStack, so
+  /// both are built and both receive updates even though only one is painted.
+  /// Without this the owner hears a chime from a tab they are not on, with the
+  /// banner rendering somewhere they cannot see — a noise with no cause, which
+  /// is exactly how an alert gets ignored.
+  ///
+  /// The count is still tracked while disabled, so switching tabs does not
+  /// then fire for everything that arrived meanwhile.
+  final bool enabled;
 
   @override
   State<WorkAlert> createState() => _WorkAlertState();
@@ -57,7 +70,7 @@ class _WorkAlertState extends State<WorkAlert> {
     super.didUpdateWidget(old);
     final previous = _seen ?? old.count;
     _seen = widget.count;
-    if (widget.count > previous) _ring();
+    if (widget.enabled && widget.count > previous) _ring();
   }
 
   @override

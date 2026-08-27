@@ -68,6 +68,7 @@ class _ReportPanelState extends State<ReportPanel> {
         filename: name,
         mimeType: 'text/csv',
         subject: '${store.settings.name} — ${_rangeLabel(t)}',
+        origin: FileDelivery.originOf(context),
       );
       if (!mounted) return;
       // Dismissing the share sheet is not a failure; saying "Saved" then would
@@ -170,12 +171,23 @@ class _ReportPanelState extends State<ReportPanel> {
               title: t.noOrdersHere,
               message: t.noOrdersHereBody,
             )
-          else
+          else ...[
+            // Say when the list is cut short. A silent truncation reads as
+            // "that is all of them", and the export is the way to get the
+            // rest.
+            if (orders.length > _listLimit)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 10, left: 4),
+                child: Text(
+                  t.showingFirst(_listLimit, orders.length),
+                  style: AppType.label,
+                ),
+              ),
             CardGrid(
               minTileWidth: 380,
               padding: EdgeInsets.zero,
               children: [
-                for (final order in orders.take(30))
+                for (final order in orders.take(_listLimit))
                   OrderTicket(
                     order: order,
                     store: store,
@@ -184,10 +196,15 @@ class _ReportPanelState extends State<ReportPanel> {
                   ),
               ],
             ),
+          ],
         ],
       ),
     );
   }
+
+  /// Enough to scan; the export carries everything. Rendering a year of
+  /// tickets as cards would be a scroll nobody finishes.
+  static const int _listLimit = 30;
 }
 
 /// Today / week / month / all, plus a date picker for anything else.

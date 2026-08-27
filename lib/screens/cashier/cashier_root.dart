@@ -26,7 +26,10 @@ import 'payment_dialog.dart';
 /// a cashier closing up asks exactly the same question, and sending them to
 /// find an admin for it would be silly.
 class CashierRoot extends StatefulWidget {
-  const CashierRoot({super.key});
+  const CashierRoot({super.key, this.alerts = true});
+
+  /// False when this board is mounted behind another tab. See [WorkAlert].
+  final bool alerts;
 
   @override
   State<CashierRoot> createState() => _CashierRootState();
@@ -113,6 +116,7 @@ class _CashierRootState extends State<CashierRoot> {
       message: t.readyToPayNow(ready.length),
       color: AppColors.statusReady,
       icon: Icons.point_of_sale_rounded,
+      enabled: widget.alerts,
       child: DefaultTabController(
       length: 4,
       child: Scaffold(

@@ -17,7 +17,10 @@ import '../../widgets/work_alert.dart';
 /// Serve*. Only that second tap moves it across to **Ready**. Rule 6 still
 /// holds — NEW -> COOKING -> READY, and nothing skips a step.
 class KitchenRoot extends StatelessWidget {
-  const KitchenRoot({super.key});
+  const KitchenRoot({super.key, this.alerts = true});
+
+  /// False when this board is mounted behind another tab. See [WorkAlert].
+  final bool alerts;
 
   @override
   Widget build(BuildContext context) {
@@ -46,6 +49,7 @@ class KitchenRoot extends StatelessWidget {
       message: t.newOrdersArrived(counts.waiting),
       color: AppColors.statusNew,
       icon: Icons.ramen_dining_rounded,
+      enabled: alerts,
       child: DefaultTabController(
       length: 2,
       child: Scaffold(

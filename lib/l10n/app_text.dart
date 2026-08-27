@@ -442,6 +442,10 @@ class AppText {
   String get exportFailed =>
       _('Could not save the file', 'មិនអាចរក្សាទុកឯកសារបានទេ');
   String get topDishes => _('Best sellers', 'មុខម្ហូបលក់ដាច់');
+  String showingFirst(int shown, int total) => _(
+        'Showing the first $shown of $total — export for all of them',
+        'បង្ហាញ $shown ដំបូងក្នុងចំណោម $total — នាំចេញដើម្បីមើលទាំងអស់',
+      );
   String get averageOrder => _('Average order', 'ជាមធ្យមក្នុងមួយការបញ្ជាទិញ');
   String get dishesSold => _('Dishes sold', 'មុខម្ហូបបានលក់');
   String get cancelledCount => _('Cancelled', 'បានលុបចោល');

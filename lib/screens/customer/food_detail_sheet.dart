@@ -79,7 +79,7 @@ class _FoodDetailSheetState extends State<FoodDetailSheet> {
                               ),
                               child: AspectRatio(
                                 aspectRatio: 16 / 10,
-                                child: FoodImage(item.image),
+                                child: FoodImage.forItem(item),
                               ),
                             ),
                             Positioned(

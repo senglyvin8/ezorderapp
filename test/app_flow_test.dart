@@ -7,6 +7,7 @@ import 'package:restaurant_qr_ordering/widgets/session_bar.dart';
 import 'package:restaurant_qr_ordering/data/demo_data.dart';
 import 'package:restaurant_qr_ordering/l10n/app_text.dart';
 import 'package:restaurant_qr_ordering/models/order.dart';
+import 'package:restaurant_qr_ordering/screens/customer/food_detail_sheet.dart';
 import 'package:restaurant_qr_ordering/models/staff_account.dart';
 import 'package:restaurant_qr_ordering/widgets/cart_summary_bar.dart';
 import 'package:restaurant_qr_ordering/widgets/food_image.dart';
@@ -730,6 +731,124 @@ void main() {
       expect(store.cartItemCount, 3);
       expect(store.activeTable?.number, '10');
       expect(tester.takeException(), isNull);
+    });
+  });
+
+  group('the menu scrolls as one list', () {
+    /// The label of whichever category chip is currently lit. The chips are
+    /// the only white 14.5pt text in the bar — the Dine in / Takeaway segments
+    /// are a size smaller.
+    String selectedChip(WidgetTester tester) {
+      final lit = tester
+          .widgetList<Text>(find.descendant(
+            of: find.byType(AppBar),
+            matching: find.byType(Text),
+          ))
+          .where((text) =>
+              text.style?.color == Colors.white &&
+              text.style?.fontSize == 14.5)
+          .toList();
+      expect(lit, hasLength(1), reason: 'exactly one category chip is lit');
+      return lit.single.data!;
+    }
+
+    /// The category strip only builds the chips near the visible window, so
+    /// reaching a later one means scrolling it the way a thumb would.
+    Future<void> revealChip(WidgetTester tester, String label) async {
+      final strip = find.descendant(
+        of: find.byType(AppBar),
+        matching: find.byType(Scrollable),
+      );
+      for (var i = 0; i < 6; i++) {
+        final chip = find.descendant(of: strip, matching: find.text(label));
+        if (chip.evaluate().isNotEmpty) return;
+        await tester.drag(strip, const Offset(-160, 0));
+        await tester.pumpAndSettle();
+      }
+      fail('the $label chip never came into the strip');
+    }
+
+    testWidgets('scrolling moves the highlighted tab along', (tester) async {
+      final store = await pumpApp(tester);
+      store.openTable(store.tableByNumber('05')!.id);
+      await tester.pumpAndSettle();
+
+      // Every category is on the one list now, under its own heading.
+      final t = store.text;
+      expect(selectedChip(tester), t.popular);
+      expect(
+        find.descendant(
+          of: find.byType(CustomScrollView),
+          matching: find.text(t.popular),
+        ),
+        findsOneWidget,
+        reason: 'the list opens on the Popular heading',
+      );
+
+      // Reading on past the Popular block lands in the first real category.
+      final rice = store.categoryDisplayName(store.sortedCategories.first.id);
+      await tester.drag(find.byType(CustomScrollView), const Offset(0, -1200));
+      await tester.pumpAndSettle();
+      expect(selectedChip(tester), rice);
+
+      // And reading to the very end selects the last category, even though
+      // its heading can never climb all the way to the top of the list.
+      await tester.drag(find.byType(CustomScrollView), const Offset(0, -6000));
+      await tester.pumpAndSettle();
+      expect(selectedChip(tester),
+          store.categoryDisplayName(store.sortedCategories.last.id));
+    });
+
+    testWidgets('tapping a tab scrolls to that category', (tester) async {
+      final store = await pumpApp(tester);
+      store.openTable(store.tableByNumber('05')!.id);
+      await tester.pumpAndSettle();
+
+      final label = store.categoryDisplayName('cat-drinks');
+      await revealChip(tester, label);
+      await tester.tap(find.descendant(
+        of: find.byType(AppBar),
+        matching: find.text(label),
+      ));
+      await tester.pumpAndSettle();
+
+      expect(selectedChip(tester), label);
+      // That category's heading is now at the top of the list — the tap has
+      // to reach a section far enough down that it had not been built yet.
+      final header = find.descendant(
+        of: find.byType(CustomScrollView),
+        matching: find.text(label),
+      );
+      expect(header, findsOneWidget);
+      final list = tester.getRect(find.byType(CustomScrollView));
+      expect(tester.getRect(header).top - list.top, inInclusiveRange(0, 40),
+          reason: 'the heading sits at the top of the list, not just on it');
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('the dish sheet shows the photo the dish actually has',
+        (tester) async {
+      final store = await pumpApp(tester);
+      // A one pixel PNG, standing in for a photo the admin uploaded.
+      const photo = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJ'
+          'AAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
+      await signIn(tester, store, StaffRole.admin);
+      await store.updateMenuItem(
+          store.menuItem('food-01')!.copyWith(photo: photo));
+      store.setMode(AppMode.customer);
+      store.openTable(store.tableByNumber('05')!.id);
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byType(FoodImage).first);
+      await tester.pumpAndSettle();
+
+      final sheetImage = tester.widget<FoodImage>(find.descendant(
+        of: find.byType(FoodDetailSheet),
+        matching: find.byType(FoodImage),
+      ));
+      expect(sheetImage.photo, photo,
+          reason: 'the sheet must draw the dish photo, not just the '
+              'bundled illustration');
     });
   });
 }

@@ -26,20 +26,223 @@ class MenuScreen extends StatefulWidget {
   State<MenuScreen> createState() => _MenuScreenState();
 }
 
+/// One category of the menu as it appears in the scrolling list.
+class _MenuSection {
+  const _MenuSection({
+    required this.id,
+    required this.title,
+    required this.items,
+  });
+
+  final String id;
+  final String title;
+  final List<MenuItem> items;
+}
+
 class _MenuScreenState extends State<MenuScreen> {
+  /// A header counts as "the one you are reading" once its top edge has
+  /// reached this far from the top of the list.
+  static const double _headerSnap = 12;
+
+  final ScrollController _scroll = ScrollController();
+  final ScrollController _chipScroll = ScrollController();
+  final GlobalKey _listKey = GlobalKey();
+  final Map<String, GlobalKey> _headerKeys = {};
+  final Map<String, GlobalKey> _chipKeys = {};
+
+  List<_MenuSection> _sections = const [];
   String _categoryId = kPopularCategoryId;
+
+  /// Blank space under the last dish. Without it the categories near the end
+  /// of the menu can never be scrolled up to the top of the list, so tapping
+  /// their tab would leave the reader looking at the wrong heading.
+  double _tail = _minTail;
+  static const double _minTail = 28;
+
+  /// True while a tap on a chip is driving the list, so the scroll-spy does
+  /// not fight the animation and light up every tab it passes through.
+  bool _scrollingToSection = false;
+  bool _syncQueued = false;
+
+  /// The section a tap is currently heading for. A second tap takes it over,
+  /// and the run it interrupted gives up rather than dragging the list back.
+  String? _scrollTarget;
+
+  @override
+  void dispose() {
+    _scroll.dispose();
+    _chipScroll.dispose();
+    super.dispose();
+  }
+
+  GlobalKey _headerKey(String id) =>
+      _headerKeys.putIfAbsent(id, () => GlobalKey());
+
+  GlobalKey _chipKey(String id) => _chipKeys.putIfAbsent(id, () => GlobalKey());
+
+  /// Recompute the highlighted tab after the frame that the scroll produced —
+  /// header positions are only trustworthy once that layout has happened.
+  void _queueSync() {
+    if (_syncQueued) return;
+    _syncQueued = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _syncQueued = false;
+      if (!mounted) return;
+      _syncTail();
+      // A tap already knows which tab it wants; only a finger on the list
+      // gets to move the highlight.
+      if (!_scrollingToSection) _syncActiveCategory();
+    });
+  }
+
+  /// Distance from the top of the list to the top of a section header, or
+  /// null when that header is too far off screen to have been built.
+  double? _headerTop(String id) {
+    final list = _listKey.currentContext?.findRenderObject();
+    final header = _headerKeys[id]?.currentContext?.findRenderObject();
+    if (list is! RenderBox || header is! RenderBox) return null;
+    if (!list.attached || !header.attached) return null;
+    return list.globalToLocal(header.localToGlobal(Offset.zero)).dy;
+  }
+
+  /// Size the tail so the last category can still reach the top of the list.
+  /// Measured rather than guessed: the height of a section depends on how many
+  /// dishes it holds and how long their names run in the current language.
+  void _syncTail() {
+    if (_sections.isEmpty || !_scroll.hasClients) return;
+    final lastTop = _headerTop(_sections.last.id);
+    if (lastTop == null) return;
+    final position = _scroll.position;
+    if (position.maxScrollExtent <= 0) {
+      // The whole menu fits on one screen — there is nothing to scroll and
+      // nothing to pad, and the total height cannot be read off the extent.
+      if (_tail != _minTail) setState(() => _tail = _minTail);
+      return;
+    }
+    // Everything below the last heading, with the tail already there taken
+    // back out — otherwise each pass would measure its own padding.
+    final belowLastHeader = position.maxScrollExtent +
+        position.viewportDimension -
+        _tail -
+        (lastTop + position.pixels);
+    final tail = (position.viewportDimension - belowLastHeader)
+        .clamp(_minTail, position.viewportDimension);
+    if ((tail - _tail).abs() > 1) setState(() => _tail = tail);
+  }
+
+  void _syncActiveCategory() {
+    if (_sections.isEmpty || !_scroll.hasClients) return;
+    final position = _scroll.position;
+
+    String active = _sections.first.id;
+    if (position.maxScrollExtent > 0 &&
+        position.pixels >= position.maxScrollExtent - 1) {
+      // At the very bottom the last header may never reach the top of the
+      // list, so scrolling to the end would otherwise never select the last
+      // tab. Reading the end of the menu means being on the last category.
+      active = _sections.last.id;
+    } else {
+      for (var i = 0; i < _sections.length; i++) {
+        final top = _headerTop(_sections[i].id);
+        if (top == null) continue; // not built — keep looking.
+        if (top <= _headerSnap) {
+          active = _sections[i].id;
+        } else {
+          // The first header still below the line: the section above it is
+          // the one filling the screen.
+          if (i > 0) active = _sections[i - 1].id;
+          break;
+        }
+      }
+    }
+
+    if (active != _categoryId) {
+      setState(() => _categoryId = active);
+      _revealChip(active);
+    }
+  }
+
+  /// Keep the highlighted chip inside the strip as the list moves through
+  /// categories that started off screen.
+  void _revealChip(String id) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final ctx = _chipKeys[id]?.currentContext;
+      if (!mounted || ctx == null) return;
+      Scrollable.ensureVisible(
+        ctx,
+        alignment: 0.5,
+        duration: const Duration(milliseconds: 220),
+        curve: Curves.easeOut,
+      );
+    });
+  }
+
+  Future<void> _onCategoryTap(String id) async {
+    setState(() => _categoryId = id);
+    _revealChip(id);
+    await _scrollToSection(id);
+  }
+
+  /// Every heading is a sliver of its own, so the list has laid all of them
+  /// out even when they are far off screen — a tab can jump straight to its
+  /// section instead of walking there.
+  ///
+  /// Where a section that has not been reached yet *starts* is only an
+  /// estimate, though: a list that builds its rows on demand can only guess
+  /// the height of the ones it has never drawn. So aim, look at where the
+  /// heading actually landed now that the rows around it are real, and aim
+  /// again until it sits at the top.
+  Future<void> _scrollToSection(String id) async {
+    if (!_scroll.hasClients) return;
+    _scrollingToSection = true;
+    _scrollTarget = id;
+    for (var attempt = 0; attempt < 6; attempt++) {
+      final ctx = _headerKeys[id]?.currentContext;
+      if (ctx == null || !ctx.mounted) break;
+      await Scrollable.ensureVisible(
+        ctx,
+        duration: Duration(milliseconds: attempt == 0 ? 280 : 120),
+        curve: Curves.easeOutCubic,
+      );
+      if (!mounted || !_scroll.hasClients || _scrollTarget != id) return;
+      final top = _headerTop(id);
+      if (top == null || top.abs() <= 1) break;
+      // Already as far down as the list goes.
+      if (_scroll.position.pixels >= _scroll.position.maxScrollExtent) break;
+    }
+    if (_scrollTarget != id) return;
+    _scrollTarget = null;
+    _scrollingToSection = false;
+    if (mounted) _syncActiveCategory();
+  }
+
+  List<_MenuSection> _buildSections(AppStore store) {
+    final sections = <_MenuSection>[];
+    for (final category in store.customerCategories) {
+      final items = store.itemsInCategory(category.id);
+      if (items.isEmpty) continue; // an empty tab is nothing to scroll to.
+      sections.add(_MenuSection(
+        id: category.id,
+        title: store.categoryDisplayName(category.id),
+        items: items,
+      ));
+    }
+    return sections;
+  }
 
   @override
   Widget build(BuildContext context) {
     final store = context.watch<AppStore>();
     final t = store.text;
     final table = store.activeTable;
-    final categories = store.customerCategories;
 
-    if (!categories.any((c) => c.id == _categoryId)) {
-      _categoryId = categories.first.id;
+    _sections = _buildSections(store);
+    // The menu can change under the reader — a dish sells out, the language
+    // flips — so remeasure once this frame is on screen.
+    _queueSync();
+    if (!_sections.any((s) => s.id == _categoryId)) {
+      _categoryId = _sections.isEmpty ? kPopularCategoryId : _sections.first.id;
     }
-    final items = store.itemsInCategory(_categoryId);
 
     return Scaffold(
       backgroundColor: AppColors.surface,
@@ -103,18 +306,19 @@ class _MenuScreenState extends State<MenuScreen> {
                 SizedBox(
                   height: 58,
                   child: ListView.separated(
+                    controller: _chipScroll,
                     scrollDirection: Axis.horizontal,
                     padding: const EdgeInsets.symmetric(
                         horizontal: 14, vertical: 10),
-                    itemCount: categories.length,
+                    itemCount: _sections.length,
                     separatorBuilder: (_, __) => const SizedBox(width: 8),
                     itemBuilder: (context, index) {
-                      final category = categories[index];
+                      final section = _sections[index];
                       return _CategoryChip(
-                        label: store.categoryDisplayName(category.id),
-                        selected: category.id == _categoryId,
-                        onTap: () =>
-                            setState(() => _categoryId = category.id),
+                        key: _chipKey(section.id),
+                        label: section.title,
+                        selected: section.id == _categoryId,
+                        onTap: () => _onCategoryTap(section.id),
                       );
                     },
                   ),
@@ -124,7 +328,9 @@ class _MenuScreenState extends State<MenuScreen> {
           ),
         ),
       ),
-      body: items.isEmpty
+      // One continuous menu: every category in order, with the tab strip
+      // following whatever is under the reader's thumb.
+      body: _sections.isEmpty
           ? EmptyState(
               icon: Icons.ramen_dining_rounded,
               title: t.emptyCategory,
@@ -132,12 +338,42 @@ class _MenuScreenState extends State<MenuScreen> {
             )
           : PageWidth(
               maxWidth: 640,
-              child: ListView.separated(
-                padding: const EdgeInsets.fromLTRB(16, 16, 16, 28),
-                itemCount: items.length,
-                separatorBuilder: (_, __) => const SizedBox(height: 12),
-                itemBuilder: (context, index) =>
-                    _FoodCard(item: items[index], store: store),
+              child: NotificationListener<ScrollNotification>(
+                onNotification: (notification) {
+                  if (notification.metrics.axis == Axis.vertical) _queueSync();
+                  return false;
+                },
+                child: CustomScrollView(
+                  key: _listKey,
+                  controller: _scroll,
+                  slivers: [
+                    for (var i = 0; i < _sections.length; i++) ...[
+                      SliverToBoxAdapter(
+                        child: Padding(
+                          key: _headerKey(_sections[i].id),
+                          padding: EdgeInsets.fromLTRB(16, i == 0 ? 16 : 24, 16, 10),
+                          child: Text(
+                            _sections[i].title,
+                            style: AppType.screenTitle,
+                          ),
+                        ),
+                      ),
+                      SliverPadding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        sliver: SliverList.separated(
+                          itemCount: _sections[i].items.length,
+                          separatorBuilder: (_, __) =>
+                              const SizedBox(height: 12),
+                          itemBuilder: (context, index) => _FoodCard(
+                            item: _sections[i].items[index],
+                            store: store,
+                          ),
+                        ),
+                      ),
+                    ],
+                    SliverToBoxAdapter(child: SizedBox(height: _tail)),
+                  ],
+                ),
               ),
             ),
       // The running total sits above the tab bar so it is always in reach.
@@ -192,6 +428,7 @@ class _CartButton extends StatelessWidget {
 
 class _CategoryChip extends StatelessWidget {
   const _CategoryChip({
+    super.key,
     required this.label,
     required this.selected,
     required this.onTap,

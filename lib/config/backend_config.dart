@@ -56,6 +56,28 @@ abstract class BackendConfig {
       supabaseAnonKey.isNotEmpty &&
       restaurantSlug.isNotEmpty;
 
+  /// Where the customer-facing web app is hosted, e.g.
+  /// `https://ezorder.vercel.app`. No trailing slash.
+  ///
+  /// This is what a printed table QR code points at. It has to be a public
+  /// address a diner's phone can reach — not `localhost`, and not the app
+  /// itself, because the phone showing the QR code is not the phone scanning
+  /// it. Without it the codes are only useful to the in-app scanner.
+  static const String publicUrl =
+      String.fromEnvironment('PUBLIC_URL', defaultValue: '');
+
+  static bool get hasPublicUrl => publicUrl.isNotEmpty;
+
+  /// The link a table's QR code should carry.
+  ///
+  /// Hash form on purpose: Flutter web routes on the fragment unless told
+  /// otherwise, so `/#/order/demo/table/05` is served by any static host
+  /// without a rewrite rule. A plain path would 404 everywhere except a dev
+  /// server.
+  static String tableLink(String tableNumber) =>
+      '${publicUrl.replaceAll(RegExp(r'/+$'), '')}'
+      '/#/order/$slug/table/$tableNumber';
+
   /// The slug actually in force: the configured restaurant when connected,
   /// and the bundled demo's slug otherwise.
   ///

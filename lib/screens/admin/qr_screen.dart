@@ -9,23 +9,36 @@ import 'package:printing/printing.dart';
 import 'package:provider/provider.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 
+import '../../config/backend_config.dart';
 import '../../data/app_store.dart';
 import '../../models/restaurant_table.dart';
 import '../../theme/app_theme.dart';
 import '../../theme/pdf_theme.dart';
 import '../../widgets/app_chrome.dart';
 
-/// Printable QR for one table.
+/// What a table's printed QR code carries.
 ///
-/// When the prototype runs on the web the code encodes a real link back to
-/// this app (`…/order/demo/table/05`), so a phone camera opens the menu for
-/// that table. On mobile builds it falls back to the table identifier, which
-/// the in-app scanner understands.
+/// The order of preference matters, because the phone showing this screen is
+/// not the phone that will scan the sticker:
+///
+///  1. **The configured public address.** A real link a diner's camera can
+///     open — the only one of these that works off a printed sticker. Set
+///     `PUBLIC_URL` at build time; see `supabase/README.md`.
+///  2. **Wherever this build is being served from**, when it is the web app
+///     and no public address was configured. Useful while developing, useless
+///     on a sticker, because it is usually `localhost`.
+///  3. **The bare table identifier.** Only the in-app scanner understands
+///     this. A phone camera will see a meaningless string and do nothing —
+///     which is why [BackendConfig.hasPublicUrl] is worth telling the admin
+///     about rather than silently printing a dud.
 String qrPayloadFor(RestaurantTable table) {
+  if (BackendConfig.hasPublicUrl) {
+    return BackendConfig.tableLink(table.number);
+  }
   final base = Uri.base;
   if (base.scheme == 'http' || base.scheme == 'https') {
     return base
-        .replace(path: table.deepLinkPath, query: null, fragment: null)
+        .replace(path: '/', query: null, fragment: '/${table.deepLinkPath.substring(1)}')
         .toString();
   }
   return table.qrId;
@@ -109,6 +122,40 @@ class QrScreen extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 18),
+            // Printing a sticker nobody can scan is an expensive mistake to
+            // discover on the restaurant floor, so say so here.
+            if (!BackendConfig.hasPublicUrl && !payload.startsWith('http')) ...[
+              AppCard(
+                color: tint(AppColors.danger),
+                elevated: false,
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Icon(Icons.warning_amber_rounded,
+                        size: 19, color: AppColors.danger),
+                    const SizedBox(width: 9),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            t.qrNotScannable,
+                            style: const TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.danger,
+                            ),
+                          ),
+                          const SizedBox(height: 3),
+                          Text(t.qrNotScannableBody, style: AppType.label),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 18),
+            ],
             SectionLabel(t.encodedValue),
             AppCard(
               padding: const EdgeInsets.all(14),

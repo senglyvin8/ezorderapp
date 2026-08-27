@@ -558,6 +558,17 @@ class AppText {
   String get tableQrCode => _('Table QR code', 'កូដ QR របស់តុ');
   String get scanToOrder => _('Scan to Order', 'ស្កេនដើម្បីបញ្ជាទិញ');
   String get encodedValue => _('Encoded value', 'តម្លៃដែលបានអ៊ិនកូដ');
+  String get qrNotScannable => _(
+        'This code cannot be scanned by a customer',
+        'អតិថិជនមិនអាចស្កេនកូដនេះបានទេ',
+      );
+  String get qrNotScannableBody => _(
+        'It carries a table identifier, not a web address, so a phone camera '
+        'will do nothing with it. Build the app with PUBLIC_URL set to where '
+        'the customer web app is hosted, then print these again.',
+        'វាផ្ទុកតែលេខសម្គាល់តុ មិនមែនអាសយដ្ឋានគេហទំព័រទេ ដូច្នេះកាមេរ៉ាទូរស័ព្ទនឹងមិនធ្វើអ្វីឡើយ។ '
+        'សូមបង្កើតកម្មវិធីជាមួយ PUBLIC_URL ដែលជាកន្លែងដាក់កម្មវិធីសម្រាប់អតិថិជន រួចបោះពុម្ពម្តងទៀត។',
+      );
   String identifier(String value) => _('Identifier: $value', 'អត្តសញ្ញាណ៖ $value');
   String get download => _('Download', 'ទាញយក');
   String get printQr => _('Print QR', 'បោះពុម្ព QR');

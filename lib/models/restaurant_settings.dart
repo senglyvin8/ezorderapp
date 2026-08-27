@@ -13,6 +13,7 @@ class RestaurantSettings {
     required this.currencyCode,
     required this.paymentMethods,
     this.plan = Plan.free,
+    this.code = '',
   });
 
   final String name;
@@ -35,6 +36,11 @@ class RestaurantSettings {
   /// from the settings screen.
   final Plan plan;
 
+  /// The merchant ID, `EZ-4K7Q2M`. Issued once and frozen by a trigger, so it
+  /// is read-only here for the same reason [plan] is: the app shows it and
+  /// nobody edits it. See [MerchantCode].
+  final String code;
+
   String displayName(AppLanguage lang) =>
       lang == AppLanguage.km && nameKm.trim().isNotEmpty ? nameKm : name;
 
@@ -48,6 +54,7 @@ class RestaurantSettings {
     String? currencyCode,
     List<String>? paymentMethods,
     Plan? plan,
+    String? code,
   }) =>
       RestaurantSettings(
         name: name ?? this.name,
@@ -59,6 +66,7 @@ class RestaurantSettings {
         currencyCode: currencyCode ?? this.currencyCode,
         paymentMethods: paymentMethods ?? this.paymentMethods,
         plan: plan ?? this.plan,
+        code: code ?? this.code,
       );
 
   Map<String, dynamic> toJson() => {
@@ -71,6 +79,7 @@ class RestaurantSettings {
         'currencyCode': currencyCode,
         'paymentMethods': paymentMethods,
         'plan': plan.wire,
+        if (code.isNotEmpty) 'code': code,
       };
 
   factory RestaurantSettings.fromJson(Map<String, dynamic> json) =>
@@ -86,5 +95,6 @@ class RestaurantSettings {
             .map((e) => e as String)
             .toList(),
         plan: Plan.fromWire(json['plan'] as String?),
+        code: json['code'] as String? ?? '',
       );
 }

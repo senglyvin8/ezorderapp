@@ -37,6 +37,7 @@ read what each one adds before it lands:
 | 8 | `migrations/0008_platform.sql` | The operator console |
 | 9 | `migrations/0009_platform_detail.sql` | What the console needs to triage |
 | 10 | `migrations/0010_upgrades.sql` | Upgrade requests, and how to reach you |
+| 11 | `migrations/0011_merchant_code.sql` | The merchant ID staff sign in with |
 
 Each should report success with no rows. If one fails, stop — later files
 depend on earlier ones, and running them out of order leaves a half-built

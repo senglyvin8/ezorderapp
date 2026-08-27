@@ -29,6 +29,7 @@ class Merchant {
   const Merchant({
     required this.id,
     required this.slug,
+    required this.code,
     required this.name,
     required this.logo,
     required this.phone,
@@ -53,6 +54,11 @@ class Merchant {
 
   final String id;
   final String slug;
+
+  /// The merchant ID, EZ-4K7Q2M. What a merchant on the phone will read out,
+  /// so it is what the console searches on first. Blank on a project that has
+  /// not run 0011 yet.
+  final String code;
   final String name;
   final String logo;
   final String phone;
@@ -140,6 +146,7 @@ class Merchant {
   factory Merchant.fromRow(Map<String, dynamic> r) => Merchant(
         id: r['id'] as String,
         slug: r['slug'] as String,
+        code: r['code'] as String? ?? '',
         name: r['name'] as String,
         logo: (r['logo'] as String?)?.trim().isNotEmpty == true
             ? r['logo'] as String

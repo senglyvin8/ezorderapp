@@ -387,7 +387,7 @@ class _Filters extends StatelessWidget {
         TextField(
           controller: search,
           onChanged: (_) => onSearch(),
-          decoration: appInput(hint: 'Search by name, slug or phone').copyWith(
+          decoration: appInput(hint: 'Search by merchant ID, name, slug or phone').copyWith(
             prefixIcon: const Icon(Icons.search_rounded, size: 20),
             suffixIcon: search.text.isEmpty
                 ? null
@@ -540,8 +540,9 @@ class _MerchantCard extends StatelessWidget {
             children: [
               Expanded(
                 child: Text(
-                  '/${m.slug}   ·   ${m.tablesUsed} tables   ·   '
-                  '${m.menuItems} dishes   ·   ${m.ordersTotal} orders',
+                  '${m.code.isEmpty ? '/${m.slug}' : m.code}   ·   '
+                  '${m.tablesUsed} tables   ·   ${m.menuItems} dishes   ·   '
+                  '${m.ordersTotal} orders',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: AppType.label,

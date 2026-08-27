@@ -29,6 +29,7 @@ class DemoData {
         currencySymbol: Brand.currencySymbol,
         currencyCode: Brand.currencyCode,
         paymentMethods: Brand.paymentMethods,
+        code: Brand.merchantCode,
       );
 
   /// Seed accounts. The credentials are printed on the sign-in screen so the

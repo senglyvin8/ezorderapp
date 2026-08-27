@@ -179,6 +179,7 @@ class _MerchantSheet extends StatelessWidget {
             const SizedBox(height: 16),
             const SectionLabel('Account'),
             _Rows(rows: [
+              ('Merchant ID', m.code.isEmpty ? '—' : m.code),
               ('Slug', '/${m.slug}'),
               ('Owner signs in as', m.ownerUsername.isEmpty
                   ? '—'

@@ -7,6 +7,7 @@ import '../../models/staff_account.dart';
 import '../../models/upgrade_request.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/app_chrome.dart';
+import '../../widgets/merchant_id_card.dart';
 import '../../widgets/plan_meter.dart';
 import '../../widgets/upgrade_sheet.dart';
 import '../auth/sign_in_screen.dart';
@@ -45,6 +46,11 @@ class StaffScreen extends StatelessWidget {
         child: ListView(
           padding: const EdgeInsets.fromLTRB(16, 16, 16, 96),
           children: [
+            // What the owner reads out to whoever is holding the new tablet.
+            // It belongs here rather than only on Settings, because this is
+            // the screen they are on when they need it.
+            MerchantIdCard(store: store, showBlurb: false),
+            const SizedBox(height: 14),
             // The ceiling, before they reach it. "5 of 5" answers "why can I
             // not add another?" in advance instead of after the attempt.
             PlanMeter(

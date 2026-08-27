@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../models/merchant_code.dart';
 import '../models/plan.dart';
 import '../models/upgrade_request.dart';
 import 'merchant.dart';
@@ -81,8 +82,14 @@ class PlatformStore extends ChangeNotifier {
       if (health != null && m.health != health) return false;
       if (onlyNeedingAttention && !m.needsAttention) return false;
       if (q.isEmpty) return true;
+      // A merchant ID is what somebody reads down a phone, so it is matched
+      // the way they will say it: with or without the prefix, in any case,
+      // and with an O heard for a zero.
+      final code = MerchantCode.normalize(query);
+      if (code != null && m.code == code) return true;
       return m.name.toLowerCase().contains(q) ||
           m.slug.toLowerCase().contains(q) ||
+          m.code.toLowerCase().contains(q) ||
           m.phone.toLowerCase().contains(q);
     }).toList()
       ..sort((a, b) {

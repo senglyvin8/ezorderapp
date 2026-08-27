@@ -482,6 +482,17 @@ class AppText {
       );
   String get staffAccounts => _('Staff accounts', 'គណនីបុគ្គលិក');
 
+  // ------------------------------------------------------------ merchant id
+  String get merchantId => _('Merchant ID', 'លេខសម្គាល់ហាង');
+  String get merchantIdBlurb => _(
+        'Your staff enter this once on a new device, and it is what to quote '
+        'when you contact us. It never changes.',
+        'បុគ្គលិករបស់អ្នកបញ្ចូលលេខនេះម្តងនៅលើឧបករណ៍ថ្មី ហើយវាជាលេខដែលត្រូវប្រាប់ '
+        'ពេលទាក់ទងមកយើង។ វាមិនផ្លាស់ប្តូរឡើយ។',
+      );
+  String get copy => _('Copy', 'ចម្លង');
+  String get copied => _('Copied', 'បានចម្លង');
+
   // -------------------------------------------------------- asking to upgrade
   String get upgradeNeeded => _('Time for a bigger plan', 'ដល់ពេលប្តូរគម្រោងធំជាង');
   String staffCapHit(String plan, int limit) => _(

@@ -500,7 +500,7 @@ class SupabaseBackend implements Backend {
   /// clients — it is a business metric anyone could otherwise poll — and a
   /// star select would fail the moment a column is not granted.
   static const String _restaurantColumns =
-      'id,slug,name,name_km,logo,phone,address,'
+      'id,slug,code,name,name_km,logo,phone,address,'
       'currency_symbol,currency_code,payment_methods,plan';
 
   /// Enough uniqueness for a filename; the row's own id is not available yet
@@ -744,6 +744,9 @@ class SupabaseBackend implements Backend {
         paymentMethods:
             ((r['payment_methods'] as List?) ?? const []).cast<String>(),
         plan: Plan.fromWire(r['plan'] as String?),
+        // Null only on a project that has not run 0011 yet; the screens hide
+        // the row rather than showing an empty one.
+        code: r['code'] as String? ?? '',
       );
 
   static MenuCategory _categoryFrom(Map<String, dynamic> r) => MenuCategory(

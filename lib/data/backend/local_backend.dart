@@ -117,6 +117,13 @@ class LocalBackend implements Backend {
   void _restore(Map<String, dynamic> json) {
     _settings =
         RestaurantSettings.fromJson(json['settings'] as Map<String, dynamic>);
+    // A snapshot written before merchant IDs existed has none. The demo has
+    // exactly one restaurant and its code is a constant, so it can simply be
+    // filled in — the alternative is an installed demo that never shows the
+    // feature until somebody wipes it.
+    if (_settings.code.isEmpty) {
+      _settings = _settings.copyWith(code: Brand.merchantCode);
+    }
     _categories = (json['categories'] as List<dynamic>)
         .map((e) => MenuCategory.fromJson(e as Map<String, dynamic>))
         .toList();

@@ -21,6 +21,7 @@ void main() {
       Merchant(
         id: 'r',
         slug: 'demo',
+        code: 'EZ-4K7Q2M',
         name: 'ABC',
         logo: '🍜',
         phone: '',

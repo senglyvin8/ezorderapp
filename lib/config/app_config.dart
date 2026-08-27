@@ -70,6 +70,14 @@ abstract class Brand {
   /// Only lowercase letters, digits and dashes. Changing it invalidates QR
   /// codes you have already printed, so pick it once, before you print.
   static const String slug = 'demo';
+
+  /// The merchant ID of the demo restaurant.
+  ///
+  /// On a live build every restaurant is issued one by the database and it can
+  /// never be changed. There is no database behind the demo, so it carries a
+  /// fixed one — a real-looking code that staff can bind a device with, and
+  /// that the Staff screen can show an owner to read out.
+  static const String merchantCode = 'EZ-4K7Q2M';
 }
 
 /// How a merchant reaches *you* — the person running the service — when they

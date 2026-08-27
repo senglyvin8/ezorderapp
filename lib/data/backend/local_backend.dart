@@ -222,6 +222,16 @@ class LocalBackend implements Backend {
     String username = '',
   }) async {
     _require(_canManage, 'manage staff');
+    // Mirrors the trigger in 0006_plans.sql. Counts everyone with an account,
+    // including anyone switched off: a deactivated account still occupies a
+    // seat, and counting only active staff would make the cap evadable.
+    final plan = _settings.plan;
+    if (!plan.canAddStaff(_accounts.length)) {
+      throw StateError(
+        'The ${plan.label} plan allows ${plan.maxStaff} staff accounts. '
+        'Upgrade to add more.',
+      );
+    }
     if (role != StaffRole.admin && secret.length != StaffAccount.pinLength) {
       throw StateError('A PIN must be ${StaffAccount.pinLength} digits');
     }
@@ -562,6 +572,16 @@ class LocalBackend implements Backend {
   @override
   Future<RestaurantTable> addTable() async {
     _require(_canManage, 'manage tables');
+    // Mirrors the trigger in 0006_plans.sql. Implemented here as well as in
+    // Postgres so the tests can see it — a cap that only exists in the
+    // database is a cap nothing in this repository exercises.
+    final plan = _settings.plan;
+    if (!plan.canAddTable(_tables.length)) {
+      throw StateError(
+        'The ${plan.label} plan allows ${plan.maxTables} tables. '
+        'Upgrade to add more.',
+      );
+    }
     final used = _tables.map((t) => int.tryParse(t.number) ?? 0).toList();
     final next = (used.isEmpty ? 0 : used.reduce((a, b) => a > b ? a : b)) + 1;
     final number = next.toString().padLeft(2, '0');

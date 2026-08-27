@@ -236,6 +236,27 @@ void main() {
     await shoot(tester, '18-report-all-time');
   });
 
+  testWidgets(skip: !_enabled, 'plan usage on the manage screen',
+      (tester) async {
+    final store = await pump(tester);
+    await signIn(tester, store, StaffRole.admin);
+    await tester.pumpAndSettle();
+    await tester.tap(find.byIcon(Icons.tune_rounded).last);
+    await tester.pumpAndSettle();
+    await shoot(tester, '19-plan-usage');
+  });
+
+  testWidgets(skip: !_enabled, 'plans and pricing', (tester) async {
+    final store = await pump(tester);
+    await signIn(tester, store, StaffRole.admin);
+    await tester.pumpAndSettle();
+    await tester.tap(find.byIcon(Icons.tune_rounded).last);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text(store.text.viewPlans));
+    await tester.pumpAndSettle();
+    await shoot(tester, '20-pricing');
+  });
+
   testWidgets(skip: !_enabled, 'admin dashboard', (tester) async {
     final store = await pump(tester);
     await signIn(tester, store, StaffRole.admin);

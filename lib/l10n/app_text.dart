@@ -449,6 +449,35 @@ class AppText {
       ? _('1 sold', 'លក់បាន ១')
       : _('$count sold', 'លក់បាន $count');
 
+  // ------------------------------------------------------------------ plans
+  String get plan => _('Plan', 'គម្រោង');
+  String get currentPlan => _('Current plan', 'គម្រោងបច្ចុប្បន្ន');
+  String get viewPlans => _('View plans', 'មើលគម្រោង');
+  String get upgrade => _('Upgrade', 'ដំឡើងកម្រិត');
+  String get pricing => _('Plans & pricing', 'គម្រោង និងតម្លៃ');
+  String get planFree => _('Free', 'ឥតគិតថ្លៃ');
+  String get planBasic => _('Basic', 'មូលដ្ឋាន');
+  String get planPro => _('Pro', 'ជំនាញ');
+  String perMonth(String amount) => _('$amount / month', '$amount / ខែ');
+  String get freeForever => _('Free forever', 'ឥតគិតថ្លៃជារៀងរហូត');
+  String tablesLimit(int count) =>
+      _('Up to $count tables', 'តុរហូតដល់ $count');
+  String get tablesUnlimited => _('Unlimited tables', 'តុមិនកំណត់');
+  String staffLimit(int count) =>
+      _('Up to $count staff accounts', 'គណនីបុគ្គលិករហូតដល់ $count');
+  String get ordersUnlimited =>
+      _('Unlimited orders', 'ការបញ្ជាទិញមិនកំណត់');
+  String usedOf(int used, int limit) => _('$used of $limit used', 'ប្រើ $used ក្នុង $limit');
+  String usedUnlimited(int used) => _('$used used', 'ប្រើ $used');
+  String get onThisPlan => _('You are on this plan', 'អ្នកកំពុងប្រើគម្រោងនេះ');
+  String get planLimitReached => _('Plan limit reached', 'ដល់ដែនកំណត់គម្រោង');
+  String get howToUpgrade => _(
+        'Billing is not built yet. Contact us and we will move your '
+        'restaurant onto the plan you want.',
+        'ប្រព័ន្ធទូទាត់មិនទាន់មានទេ។ សូមទាក់ទងមកយើង យើងនឹងប្តូរគម្រោងឱ្យអ្នក។',
+      );
+  String get staffAccounts => _('Staff accounts', 'គណនីបុគ្គលិក');
+
   // --------------------------------------------------------------- admin nav
   String get dashboard => _('Dashboard', 'ផ្ទាំងគ្រប់គ្រង');
   String get orders => _('Orders', 'ការបញ្ជាទិញ');

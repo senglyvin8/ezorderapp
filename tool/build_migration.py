@@ -16,6 +16,7 @@ PARTS = [
     "0003_rpc.sql",
     "0004_accounts.sql",
     "0005_photos.sql",
+    "0006_plans.sql",
 ]
 
 HEADER = """\

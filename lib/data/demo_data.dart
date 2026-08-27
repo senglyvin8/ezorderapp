@@ -2,6 +2,7 @@ import '../config/app_config.dart';
 import '../models/menu_category.dart';
 import '../models/menu_item.dart';
 import '../models/order.dart';
+import '../models/plan.dart';
 import '../models/restaurant_settings.dart';
 import '../models/restaurant_table.dart';
 import '../models/staff_account.dart';
@@ -17,6 +18,9 @@ class DemoData {
   /// The restaurant's identity, straight from [Brand] in
   /// `lib/config/app_config.dart`.
   static RestaurantSettings settings() => const RestaurantSettings(
+        // The showcase runs on PRO: it seeds ten tables, and a demo that
+        // cannot add an eleventh teaches the wrong thing about the product.
+        plan: Plan.pro,
         name: Brand.name,
         nameKm: Brand.nameKm,
         logo: Brand.logo,

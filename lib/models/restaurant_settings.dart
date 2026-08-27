@@ -1,4 +1,5 @@
 import '../l10n/app_text.dart';
+import 'plan.dart';
 
 /// Restaurant-level configuration edited on the Admin > Settings screen.
 class RestaurantSettings {
@@ -11,6 +12,7 @@ class RestaurantSettings {
     required this.currencySymbol,
     required this.currencyCode,
     required this.paymentMethods,
+    this.plan = Plan.free,
   });
 
   final String name;
@@ -28,6 +30,11 @@ class RestaurantSettings {
   /// Rule 10 — payment methods are configurable per restaurant.
   final List<String> paymentMethods;
 
+  /// What the restaurant is paying for. Read-only from the app: the column
+  /// grants deliberately exclude it, so an owner cannot promote themselves
+  /// from the settings screen.
+  final Plan plan;
+
   String displayName(AppLanguage lang) =>
       lang == AppLanguage.km && nameKm.trim().isNotEmpty ? nameKm : name;
 
@@ -40,6 +47,7 @@ class RestaurantSettings {
     String? currencySymbol,
     String? currencyCode,
     List<String>? paymentMethods,
+    Plan? plan,
   }) =>
       RestaurantSettings(
         name: name ?? this.name,
@@ -50,6 +58,7 @@ class RestaurantSettings {
         currencySymbol: currencySymbol ?? this.currencySymbol,
         currencyCode: currencyCode ?? this.currencyCode,
         paymentMethods: paymentMethods ?? this.paymentMethods,
+        plan: plan ?? this.plan,
       );
 
   Map<String, dynamic> toJson() => {
@@ -61,6 +70,7 @@ class RestaurantSettings {
         'currencySymbol': currencySymbol,
         'currencyCode': currencyCode,
         'paymentMethods': paymentMethods,
+        'plan': plan.wire,
       };
 
   factory RestaurantSettings.fromJson(Map<String, dynamic> json) =>
@@ -75,5 +85,6 @@ class RestaurantSettings {
         paymentMethods: (json['paymentMethods'] as List<dynamic>? ?? const [])
             .map((e) => e as String)
             .toList(),
+        plan: Plan.fromWire(json['plan'] as String?),
       );
 }

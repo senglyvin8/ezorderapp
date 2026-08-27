@@ -10,6 +10,7 @@ import '../../models/cart_line.dart';
 import '../../models/menu_category.dart';
 import '../../models/menu_item.dart';
 import '../../models/order.dart';
+import '../../models/plan.dart';
 import '../../models/restaurant_settings.dart';
 import '../../models/restaurant_table.dart';
 import '../../models/staff_account.dart';
@@ -656,6 +657,7 @@ class SupabaseBackend implements Backend {
         currencyCode: r['currency_code'] as String? ?? 'USD',
         paymentMethods:
             ((r['payment_methods'] as List?) ?? const []).cast<String>(),
+        plan: Plan.fromWire(r['plan'] as String?),
       );
 
   static MenuCategory _categoryFrom(Map<String, dynamic> r) => MenuCategory(

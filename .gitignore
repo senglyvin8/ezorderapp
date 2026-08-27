@@ -1,0 +1,29 @@
+# Dart / Flutter
+.dart_tool/
+.packages
+.flutter-plugins
+.flutter-plugins-dependencies
+build/
+
+# Editors / OS
+.DS_Store
+.idea/
+.vscode/
+*.iml
+*.swp
+
+# iOS
+ios/Flutter/ephemeral/
+ios/Flutter/Generated.xcconfig
+ios/Flutter/flutter_export_environment.sh
+ios/Runner/GeneratedPluginRegistrant.*
+**/xcuserdata/
+**/DerivedData/
+
+# Android (not generated yet)
+android/.gradle/
+android/local.properties
+
+# Design review output: regenerate with
+#   DESIGN_SHOTS=1 flutter test --update-goldens test/design
+test/design/failures/

@@ -1,0 +1,9 @@
+// Build settings for the release build.
+//
+// Generated.xcconfig is written by the flutter tool — do not edit it.
+// Signing.xcconfig is yours: your Apple Team ID and bundle identifier.
+//
+// This project uses Swift Package Manager, not CocoaPods, so there is
+// nothing to `pod install`.
+#include "Generated.xcconfig"
+#include? "Signing.xcconfig"

@@ -1,0 +1,45 @@
+// =============================================================================
+//  iOS SIGNING — edit this to run the app on your own iPhone
+// =============================================================================
+//
+//  Apple will not install an app on a physical device unless it is signed by a
+//  developer account. A *free* Apple ID is enough for your own phone; the only
+//  catch is that the app stops opening after seven days and you re-run this to
+//  refresh it. A paid Apple Developer account ($99/yr) removes that.
+//
+//  Two things to do, once:
+//
+//  1. Add your Apple ID to Xcode.
+//       Xcode → Settings → Accounts → + → Apple ID → sign in.
+//
+//  2. Put your Team ID below.
+//       It is the 10-character code beside your name in that same Accounts
+//       window, in the "Team" column — something like A1B2C3D4E5.
+//       Or run:  open ios/Runner.xcworkspace  and read it from
+//       Runner → Signing & Capabilities → Team.
+//
+//  Then: flutter run -d "Sengly’s Phone"
+//
+//  Two-word note on the phone itself: the first time you install, iOS refuses
+//  to open an app from an unknown developer. Approve it once at
+//  Settings → General → VPN & Device Management → your Apple ID → Trust.
+
+// -----------------------------------------------------------------------------
+//  Your Apple Developer Team ID. Leave blank and the build will stop asking you
+//  to pick a team in Xcode.
+// -----------------------------------------------------------------------------
+APP_DEVELOPMENT_TEAM = DS92877RBP
+
+// -----------------------------------------------------------------------------
+//  The app's unique identifier on the App Store and on the device.
+//
+//  Must be globally unique, so use a domain you control, reversed. If you do
+//  not own a domain, your own name works fine for a personal build:
+//      com.senglyvin.restaurantqr
+//
+//  Free Apple IDs sometimes reject an identifier that someone else has already
+//  claimed — if the build complains, change this to something more unusual and
+//  run again. Changing it makes iOS treat it as a different app, so the demo
+//  data starts fresh.
+// -----------------------------------------------------------------------------
+APP_BUNDLE_ID = com.senglyvin.restaurantqr

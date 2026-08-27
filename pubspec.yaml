@@ -1,0 +1,45 @@
+name: restaurant_qr_ordering
+description: "EZ Order - mobile-first QR ordering prototype (Customer / Kitchen / Cashier / Admin)."
+publish_to: 'none'
+version: 0.1.0+1
+
+environment:
+  sdk: '>=3.4.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  cupertino_icons: ^1.0.8
+  collection: ^1.18.0
+  crypto: ^3.0.3
+  provider: ^6.1.2
+  shared_preferences: ^2.2.3
+  qr_flutter: ^4.1.0
+  mobile_scanner: ^7.0.0
+  printing: ^5.13.0
+  pdf: ^3.11.0
+  barcode: ^2.2.9
+  intl: ^0.19.0
+  image_picker: ^1.1.2
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^4.0.0
+
+flutter:
+  uses-material-design: true
+
+  config:
+    enable-swift-package-manager: true
+
+  assets:
+    - assets/food/
+
+  fonts:
+    # One family for the whole app. Kantumruy Pro is drawn for Khmer and Latin
+    # together, so a Khmer dish name and an English one share a voice instead
+    # of switching typeface mid-sentence.
+    - family: KantumruyPro
+      fonts:
+        - asset: assets/fonts/KantumruyPro.ttf

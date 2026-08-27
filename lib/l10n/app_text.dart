@@ -482,6 +482,48 @@ class AppText {
       );
   String get staffAccounts => _('Staff accounts', 'គណនីបុគ្គលិក');
 
+  // -------------------------------------------------------- asking to upgrade
+  String get upgradeNeeded => _('Time for a bigger plan', 'ដល់ពេលប្តូរគម្រោងធំជាង');
+  String staffCapHit(String plan, int limit) => _(
+        'You have used all $limit staff accounts on $plan.',
+        'អ្នកបានប្រើគណនីបុគ្គលិកគ្រប់ $limit នៅលើគម្រោង $plan។',
+      );
+  String tableCapHit(String plan, int limit) => _(
+        'You have used all $limit tables on $plan.',
+        'អ្នកបានប្រើតុគ្រប់ $limit នៅលើគម្រោង $plan។',
+      );
+  String upgradeGives(String plan) =>
+      _('$plan gives you', 'គម្រោង $plan ផ្តល់ឱ្យអ្នក');
+  String get sendRequest => _('Send upgrade request', 'ផ្ញើសំណើដំឡើងកម្រិត');
+  String get callUs => _('Call us', 'ទូរស័ព្ទមកយើង');
+  String get messageTelegram => _('Telegram', 'តេលេក្រាម');
+  String get requestSent => _('Request sent', 'បានផ្ញើសំណើ');
+  String requestSentOn(String date) =>
+      _('Sent $date', 'បានផ្ញើថ្ងៃទី $date');
+  String weWillCall(String phone) => _(
+        'We will call you on $phone.',
+        'យើងនឹងទូរស័ព្ទទៅ $phone។',
+      );
+  String get weWillBeInTouch =>
+      _('We will be in touch.', 'យើងនឹងទាក់ទងទៅអ្នក។');
+  String get withdrawRequest => _('Withdraw request', 'ដកសំណើវិញ');
+  String get requestWithdrawn => _('Request withdrawn', 'បានដកសំណើវិញ');
+  String get contactPhoneLabel =>
+      _('Phone to call you on', 'លេខទូរស័ព្ទដែលត្រូវទាក់ទង');
+  String get upgradeNoteHint =>
+      _('Anything else we should know? (optional)', 'មានអ្វីផ្សេងទៀតទេ? (មិនចាំបាច់)');
+  String get askForPlan => _('Ask for this plan', 'ស្នើសុំគម្រោងនេះ');
+  String get alreadyOnTopPlan => _(
+        'You are already on the biggest plan. Talk to us if you need more.',
+        'អ្នកកំពុងប្រើគម្រោងធំបំផុតហើយ។ សូមទាក់ទងមកយើងបើត្រូវការបន្ថែម។',
+      );
+  String get couldNotOpenLink =>
+      _('Could not open that on this device', 'មិនអាចបើកនៅលើឧបករណ៍នេះបានទេ');
+  String get upgradeRequestPending => _(
+        'Your upgrade request is with us',
+        'សំណើដំឡើងកម្រិតរបស់អ្នកនៅជាមួយយើង',
+      );
+
   // --------------------------------------------------------------- admin nav
   String get dashboard => _('Dashboard', 'ផ្ទាំងគ្រប់គ្រង');
   String get orders => _('Orders', 'ការបញ្ជាទិញ');

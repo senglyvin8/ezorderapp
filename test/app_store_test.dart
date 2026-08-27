@@ -5,6 +5,8 @@ import 'package:restaurant_qr_ordering/l10n/app_text.dart';
 import 'package:restaurant_qr_ordering/models/cart_line.dart';
 import 'package:restaurant_qr_ordering/models/staff_account.dart';
 import 'package:restaurant_qr_ordering/models/order.dart';
+import 'package:restaurant_qr_ordering/models/plan.dart';
+import 'package:restaurant_qr_ordering/models/upgrade_request.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 /// Covers the business rules from the specification that are easy to get
@@ -1051,6 +1053,121 @@ void main() {
       final restored = reloaded.order(order.id)!;
       expect(restored.items, hasLength(1));
       expect(restored.total, expectedTotal);
+    });
+  });
+
+  group('asking for a bigger plan', () {
+    /// The demo runs on PRO so that it can show ten tables. A merchant who is
+    /// about to hit a wall is on something smaller.
+    Future<void> onPlan(Plan plan) async {
+      await store.updateSettings(store.settings.copyWith(plan: plan));
+    }
+
+    test('the cap is what a merchant actually runs into', () async {
+      await onPlan(Plan.free); // two staff, and the demo seeds three
+      expect(store.atStaffLimit, isTrue);
+      await expectLater(
+        store.addStaff(name: 'Dara', role: StaffRole.kitchen, secret: '445566'),
+        throwsStateError,
+      );
+    });
+
+    test('the owner can ask, and sees that they asked', () async {
+      await onPlan(Plan.basic);
+      expect(store.upgradeRequest, isNull);
+
+      await store.requestUpgrade(
+        toPlan: Plan.pro,
+        reason: UpgradeReason.staffCap,
+        contactName: 'Owner',
+        contactPhone: '012 345 678',
+        note: 'Two more tills',
+      );
+
+      final request = store.upgradeRequest!;
+      expect(request.isOpen, isTrue);
+      expect(request.fromPlan, Plan.basic);
+      expect(request.toPlan, Plan.pro);
+      expect(request.reason, UpgradeReason.staffCap);
+      expect(request.contactPhone, '012 345 678');
+      expect(request.note, 'Two more tills');
+    });
+
+    test('asking twice edits the first request rather than filing a second',
+        () async {
+      await store.requestUpgrade(
+        toPlan: Plan.basic,
+        reason: UpgradeReason.tableCap,
+        contactName: 'Owner',
+        contactPhone: '012 345 678',
+      );
+      final first = store.upgradeRequest!;
+
+      await store.requestUpgrade(
+        toPlan: Plan.pro,
+        reason: UpgradeReason.manual,
+        contactName: 'Owner',
+        contactPhone: '',
+        note: 'Actually we want Pro',
+      );
+
+      final second = store.upgradeRequest!;
+      expect(second.id, first.id, reason: 'the same request, edited');
+      expect(second.toPlan, Plan.pro);
+      expect(second.note, 'Actually we want Pro');
+      // A blank phone means "leave it alone", not "wipe the number you were
+      // going to call me on".
+      expect(second.contactPhone, '012 345 678');
+      // How long they have been waiting is the point of the queue, so the
+      // clock does not restart when they edit.
+      expect(second.createdAt, first.createdAt);
+    });
+
+    test('it can be withdrawn', () async {
+      await store.requestUpgrade(
+        toPlan: Plan.pro,
+        reason: UpgradeReason.manual,
+        contactName: 'Owner',
+        contactPhone: '012 345 678',
+      );
+      expect(store.upgradeRequest, isNotNull);
+
+      await store.cancelUpgradeRequest();
+      expect(store.upgradeRequest, isNull);
+    });
+
+    test('only the owner can commit their employer to a bill', () async {
+      await store.signOut();
+      final cashier =
+          store.accounts.firstWhere((a) => a.role == StaffRole.cashier);
+      await store.signInWithPin(cashier.id, DemoData.cashierPin);
+
+      await expectLater(
+        store.requestUpgrade(
+          toPlan: Plan.pro,
+          reason: UpgradeReason.manual,
+          contactName: 'Bopha',
+          contactPhone: '012 345 678',
+        ),
+        throwsStateError,
+      );
+    });
+
+    test('the request survives a reload', () async {
+      await store.requestUpgrade(
+        toPlan: Plan.pro,
+        reason: UpgradeReason.staffCap,
+        contactName: 'Owner',
+        contactPhone: '012 345 678',
+      );
+      await Future<void>.delayed(Duration.zero);
+
+      final reloaded = AppStore();
+      addTearDown(reloaded.dispose);
+      await reloaded.load();
+
+      expect(reloaded.upgradeRequest?.toPlan, Plan.pro);
+      expect(reloaded.upgradeRequest?.isOpen, isTrue);
     });
   });
 }

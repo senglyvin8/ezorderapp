@@ -20,6 +20,7 @@ PARTS = [
     "0007_hardening.sql",
     "0008_platform.sql",
     "0009_platform_detail.sql",
+    "0010_upgrades.sql",
 ]
 
 HEADER = """\

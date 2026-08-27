@@ -4,8 +4,11 @@ import 'package:provider/provider.dart';
 
 import '../../data/app_store.dart';
 import '../../models/staff_account.dart';
+import '../../models/upgrade_request.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/app_chrome.dart';
+import '../../widgets/plan_meter.dart';
+import '../../widgets/upgrade_sheet.dart';
 import '../auth/sign_in_screen.dart';
 
 /// Admin-only: who can sign in, and what they are allowed to touch.
@@ -26,7 +29,12 @@ class StaffScreen extends StatelessWidget {
       ),
       floatingActionButton: FloatingActionButton.extended(
         heroTag: 'staff-fab',
-        onPressed: () => showStaffEditor(context),
+        // At the cap the button opens the upgrade sheet rather than a form
+        // that cannot be saved. Letting them fill it in first and refusing at
+        // the end would be worse.
+        onPressed: () => store.atStaffLimit
+            ? showUpgradeSheet(context, reason: UpgradeReason.staffCap)
+            : showStaffEditor(context),
         backgroundColor: AppColors.brand,
         foregroundColor: Colors.white,
         icon: const Icon(Icons.person_add_alt_rounded),
@@ -37,6 +45,16 @@ class StaffScreen extends StatelessWidget {
         child: ListView(
           padding: const EdgeInsets.fromLTRB(16, 16, 16, 96),
           children: [
+            // The ceiling, before they reach it. "5 of 5" answers "why can I
+            // not add another?" in advance instead of after the attempt.
+            PlanMeter(
+              label: t.staffAccounts,
+              used: accounts.length,
+              limit: store.settings.plan.maxStaff,
+              store: store,
+              reason: UpgradeReason.staffCap,
+            ),
+            const SizedBox(height: 14),
             SectionLabel(t.staffSubtitle),
             AppCard(
               padding: EdgeInsets.zero,

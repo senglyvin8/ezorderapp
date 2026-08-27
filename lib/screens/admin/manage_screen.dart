@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../data/app_store.dart';
+import '../../models/upgrade_request.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/app_chrome.dart';
+import '../../widgets/plan_meter.dart';
 import 'admin_menu_screen.dart';
 import 'admin_settings_screen.dart';
 import 'pricing_screen.dart';
@@ -187,18 +189,22 @@ class _PlanUsage extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 10),
-          _Meter(
+          PlanMeter(
             label: t.tables,
             used: tables,
             limit: plan.maxTables,
             store: store,
+            reason: UpgradeReason.tableCap,
+            card: false,
           ),
           const SizedBox(height: 10),
-          _Meter(
+          PlanMeter(
             label: t.staffAccounts,
             used: staff,
             limit: plan.maxStaff,
             store: store,
+            reason: UpgradeReason.staffCap,
+            card: false,
           ),
         ],
       ),
@@ -206,62 +212,3 @@ class _PlanUsage extends StatelessWidget {
   }
 }
 
-/// A bar rather than a number alone: "18 of 20" is easy to skim past, a bar
-/// that is nearly full is not.
-class _Meter extends StatelessWidget {
-  const _Meter({
-    required this.label,
-    required this.used,
-    required this.limit,
-    required this.store,
-  });
-
-  final String label;
-  final int used;
-  final int? limit;
-  final AppStore store;
-
-  @override
-  Widget build(BuildContext context) {
-    final t = store.text;
-    final unlimited = limit == null;
-    final fraction = unlimited ? 0.0 : (used / limit!).clamp(0.0, 1.0);
-    final full = !unlimited && used >= limit!;
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            Expanded(child: Text(label, style: AppType.label)),
-            Text(
-              unlimited ? t.usedUnlimited(used) : t.usedOf(used, limit!),
-              style: TextStyle(
-                fontSize: 13.5,
-                fontWeight: FontWeight.w700,
-                color: full ? AppColors.danger : AppColors.inkSoft,
-              ),
-            ),
-          ],
-        ),
-        // No bar when there is no ceiling. An indeterminate indicator would
-        // both animate forever and say the wrong thing — "unlimited" is not
-        // "loading".
-        if (!unlimited) ...[
-          const SizedBox(height: 5),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(999),
-            child: LinearProgressIndicator(
-              value: fraction,
-              minHeight: 6,
-              backgroundColor: AppColors.surface,
-              valueColor: AlwaysStoppedAnimation(
-                full ? AppColors.danger : AppColors.brand,
-              ),
-            ),
-          ),
-        ],
-      ],
-    );
-  }
-}

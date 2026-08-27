@@ -5,6 +5,7 @@ import 'dart:typed_data';
 import 'package:collection/collection.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../config/app_config.dart';
 import '../../config/backend_config.dart';
 import '../../models/cart_line.dart';
 import '../../models/menu_category.dart';
@@ -14,6 +15,7 @@ import '../../models/plan.dart';
 import '../../models/restaurant_settings.dart';
 import '../../models/restaurant_table.dart';
 import '../../models/staff_account.dart';
+import '../../models/upgrade_request.dart';
 import 'backend.dart';
 
 /// The restaurant, kept in Postgres.
@@ -141,6 +143,8 @@ class SupabaseBackend implements Backend {
         _client.from('restaurant_tables').select().eq('restaurant_id', id);
     final orders = _fetchOrders();
     final accounts = _fetchAccounts();
+    final support = _fetchSupport();
+    final upgrade = _fetchUpgradeRequest();
 
     return RestaurantData(
       settings: _settingsFrom(restaurant),
@@ -153,7 +157,55 @@ class SupabaseBackend implements Backend {
           .sorted((a, b) => a.number.compareTo(b.number)),
       orders: await orders,
       accounts: await accounts,
+      support: await support,
+      upgradeRequest: await upgrade,
     );
+  }
+
+  /// Your phone number and Telegram handle. A single public row, so a merchant
+  /// who needs to reach you can, and one you can change without shipping an
+  /// app update.
+  ///
+  /// A project that has not run 0010 yet still has to open, so a failure here
+  /// falls back to the compile-time details rather than taking the whole
+  /// restaurant down over a contact card.
+  Future<SupportContact> _fetchSupport() async {
+    try {
+      final row = await _client
+          .from('platform_settings')
+          .select('support_phone, support_telegram, support_hours')
+          .maybeSingle();
+      if (row == null) return _fallbackSupport;
+      return SupportContact.fromRow(row);
+    } catch (_) {
+      return _fallbackSupport;
+    }
+  }
+
+  static const SupportContact _fallbackSupport = SupportContact(
+    phone: Support.phone,
+    telegram: Support.telegram,
+    hours: Support.hours,
+  );
+
+  /// The merchant's open plan request. Only an owner has one to read — the
+  /// function is scoped to the caller's restaurant and a diner has none — so
+  /// this is skipped entirely when nobody is signed in.
+  Future<UpgradeRequest?> _fetchUpgradeRequest() async {
+    if (_currentUser == null) return null;
+    try {
+      final row = await _client.rpc<dynamic>('my_upgrade_request');
+      if (row == null) return null;
+      final map = row is List
+          ? (row.isEmpty ? null : row.first as Map<String, dynamic>)
+          : row as Map<String, dynamic>;
+      // A function returning a table row hands back a row of nulls rather than
+      // no row when there is nothing to return.
+      if (map == null || map['id'] == null) return null;
+      return UpgradeRequest.fromRow(map);
+    } catch (_) {
+      return null;
+    }
   }
 
   /// One round trip for orders and their lines: PostgREST can embed the child
@@ -641,6 +693,33 @@ class SupabaseBackend implements Backend {
           'currency_code': settings.currencyCode,
           'payment_methods': settings.paymentMethods,
         }).eq('id', _restaurantId!);
+        await _reload();
+      });
+
+  // ------------------------------------------------------------ plan change
+
+  @override
+  Future<void> requestUpgrade({
+    required Plan toPlan,
+    required UpgradeReason reason,
+    required String contactName,
+    required String contactPhone,
+    String note = '',
+  }) =>
+      _guard(() async {
+        await _client.rpc<dynamic>('request_upgrade', params: {
+          'p_to_plan': toPlan.wire,
+          'p_reason': reason.wire,
+          'p_contact_name': contactName.trim(),
+          'p_contact_phone': contactPhone.trim(),
+          'p_note': note,
+        });
+        await _reload();
+      });
+
+  @override
+  Future<void> cancelUpgradeRequest() => _guard(() async {
+        await _client.rpc<void>('cancel_upgrade_request');
         await _reload();
       });
 

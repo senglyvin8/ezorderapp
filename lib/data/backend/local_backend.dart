@@ -9,8 +9,11 @@ import '../../models/menu_category.dart';
 import '../../models/menu_item.dart';
 import '../../models/order.dart';
 import '../../models/restaurant_settings.dart';
+import '../../config/app_config.dart';
+import '../../models/plan.dart';
 import '../../models/restaurant_table.dart';
 import '../../models/staff_account.dart';
+import '../../models/upgrade_request.dart';
 import '../demo_data.dart';
 import 'backend.dart';
 
@@ -40,6 +43,16 @@ class LocalBackend implements Backend {
   List<StaffAccount> _accounts = [];
   int _nextOrderNumber = DemoData.nextOrderNumber();
   String? _currentUserId;
+  UpgradeRequest? _upgradeRequest;
+
+  /// Nobody is running a platform behind a demo on one phone, so the contact
+  /// details are the compile-time ones. On Supabase they come from the
+  /// database and can change without an app release.
+  static const SupportContact _support = SupportContact(
+    phone: Support.phone,
+    telegram: Support.telegram,
+    hours: Support.hours,
+  );
 
   @override
   bool get isDemo => true;
@@ -64,6 +77,8 @@ class LocalBackend implements Backend {
         tables: _tables,
         orders: _orders,
         accounts: _accounts,
+        support: _support,
+        upgradeRequest: _upgradeRequest,
       );
 
   // ------------------------------------------------------------ persistence
@@ -96,6 +111,7 @@ class LocalBackend implements Backend {
     _tables = DemoData.tables();
     _orders = DemoData.orders(DateTime.now());
     _nextOrderNumber = DemoData.nextOrderNumber();
+    _upgradeRequest = null;
   }
 
   void _restore(Map<String, dynamic> json) {
@@ -119,6 +135,10 @@ class LocalBackend implements Backend {
         .toList();
     if (_accounts.isEmpty) _accounts = DemoData.accounts();
     _currentUserId = json['currentUserId'] as String?;
+    final request = json['upgradeRequest'];
+    _upgradeRequest = request == null
+        ? null
+        : UpgradeRequest.fromJson(request as Map<String, dynamic>);
   }
 
   Map<String, dynamic> _snapshot() => {
@@ -130,6 +150,7 @@ class LocalBackend implements Backend {
         'nextOrderNumber': _nextOrderNumber,
         'accounts': _accounts.map((e) => e.toJson()).toList(),
         'currentUserId': _currentUserId,
+        if (_upgradeRequest != null) 'upgradeRequest': _upgradeRequest!.toJson(),
       };
 
   Future<void> _persist() async {
@@ -623,6 +644,61 @@ class LocalBackend implements Backend {
   Future<void> updateSettings(RestaurantSettings settings) async {
     _require(_canManage, 'change settings');
     _settings = settings;
+    _commit();
+  }
+
+  // ------------------------------------------------------------ plan change
+
+  /// Mirrors request_upgrade() in 0010_upgrades.sql, including the part that
+  /// matters: asking again edits the open request rather than filing a second.
+  ///
+  /// There is nobody to receive it on a device with no platform behind it, and
+  /// it is still worth keeping — the demo shows the whole flow, and the tests
+  /// can watch an owner ask and then withdraw.
+  @override
+  Future<void> requestUpgrade({
+    required Plan toPlan,
+    required UpgradeReason reason,
+    required String contactName,
+    required String contactPhone,
+    String note = '',
+  }) async {
+    _require(_canManage, 'ask for a plan change');
+
+    final open = _upgradeRequest;
+    if (open != null && open.isOpen) {
+      _upgradeRequest = open.copyWith(
+        toPlan: toPlan,
+        reason: reason,
+        // Blank keeps what is already on the request: the sheet sends what the
+        // owner typed, and an empty field means "leave it alone", not "wipe
+        // the number you were going to call me on".
+        contactName: contactName.trim().isEmpty ? null : contactName.trim(),
+        contactPhone: contactPhone.trim().isEmpty ? null : contactPhone.trim(),
+        note: note,
+      );
+      _commit();
+      return;
+    }
+
+    _upgradeRequest = UpgradeRequest(
+      id: _uid('req'),
+      fromPlan: _settings.plan,
+      toPlan: toPlan,
+      reason: reason,
+      status: UpgradeStatus.pending,
+      createdAt: DateTime.now(),
+      contactName: contactName.trim(),
+      contactPhone: contactPhone.trim(),
+      note: note,
+    );
+    _commit();
+  }
+
+  @override
+  Future<void> cancelUpgradeRequest() async {
+    _require(_canManage, 'withdraw a plan change request');
+    _upgradeRequest = null;
     _commit();
   }
 }

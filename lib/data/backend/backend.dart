@@ -3,8 +3,10 @@ import '../../models/menu_category.dart';
 import '../../models/menu_item.dart';
 import '../../models/order.dart';
 import '../../models/restaurant_settings.dart';
+import '../../models/plan.dart';
 import '../../models/restaurant_table.dart';
 import '../../models/staff_account.dart';
+import '../../models/upgrade_request.dart';
 
 /// Everything the restaurant shares: its profile, its menu, its tables, its
 /// orders and who can sign in.
@@ -21,6 +23,8 @@ class RestaurantData {
     required this.tables,
     required this.orders,
     required this.accounts,
+    required this.support,
+    this.upgradeRequest,
   });
 
   final RestaurantSettings settings;
@@ -30,6 +34,16 @@ class RestaurantData {
   final List<Order> orders;
   final List<StaffAccount> accounts;
 
+  /// How to reach the people running the service. Platform-level rather than
+  /// restaurant-level, and it rides along here because it is read on the same
+  /// trip and changes about as often as the menu does — which is to say
+  /// almost never, and never at a moment worth a second round trip.
+  final SupportContact support;
+
+  /// The merchant's open request for a bigger plan, if they have one. Null is
+  /// the ordinary case: most restaurants are not asking for anything.
+  final UpgradeRequest? upgradeRequest;
+
   RestaurantData copyWith({
     RestaurantSettings? settings,
     List<MenuCategory>? categories,
@@ -37,6 +51,11 @@ class RestaurantData {
     List<RestaurantTable>? tables,
     List<Order>? orders,
     List<StaffAccount>? accounts,
+    SupportContact? support,
+    UpgradeRequest? upgradeRequest,
+    // A request that has just been withdrawn has to be able to become null,
+    // which `upgradeRequest ?? this.upgradeRequest` can never express.
+    bool clearUpgradeRequest = false,
   }) =>
       RestaurantData(
         settings: settings ?? this.settings,
@@ -45,6 +64,10 @@ class RestaurantData {
         tables: tables ?? this.tables,
         orders: orders ?? this.orders,
         accounts: accounts ?? this.accounts,
+        support: support ?? this.support,
+        upgradeRequest: clearUpgradeRequest
+            ? null
+            : (upgradeRequest ?? this.upgradeRequest),
       );
 }
 
@@ -149,6 +172,26 @@ abstract class Backend {
   // --------------------------------------------------------------- settings
 
   Future<void> updateSettings(RestaurantSettings settings);
+
+  // ------------------------------------------------------------- plan change
+
+  /// Asks to be moved onto a bigger plan.
+  ///
+  /// There is no billing, so this files a request rather than taking money:
+  /// it lands in the operator's console and the owner sees that it did. Asking
+  /// twice edits the first request instead of filing a second — a support
+  /// queue holding four copies of one ask is worse than no queue.
+  Future<void> requestUpgrade({
+    required Plan toPlan,
+    required UpgradeReason reason,
+    required String contactName,
+    required String contactPhone,
+    String note = '',
+  });
+
+  /// Withdraws the open request. An owner who asked by mistake should not have
+  /// to live with a card on their pricing screen they cannot dismiss.
+  Future<void> cancelUpgradeRequest();
 
   /// Throws on a real backend: there is no demo data to put back, and wiping a
   /// live restaurant from a settings screen is not a feature.

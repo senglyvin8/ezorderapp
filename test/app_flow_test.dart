@@ -7,6 +7,8 @@ import 'package:restaurant_qr_ordering/widgets/session_bar.dart';
 import 'package:restaurant_qr_ordering/data/demo_data.dart';
 import 'package:restaurant_qr_ordering/l10n/app_text.dart';
 import 'package:restaurant_qr_ordering/models/order.dart';
+import 'package:restaurant_qr_ordering/models/plan.dart';
+import 'package:restaurant_qr_ordering/widgets/upgrade_sheet.dart';
 import 'package:restaurant_qr_ordering/screens/customer/food_detail_sheet.dart';
 import 'package:restaurant_qr_ordering/models/staff_account.dart';
 import 'package:restaurant_qr_ordering/widgets/cart_summary_bar.dart';
@@ -849,6 +851,69 @@ void main() {
       expect(sheetImage.photo, photo,
           reason: 'the sheet must draw the dish photo, not just the '
               'bundled illustration');
+    });
+  });
+
+
+  group('running out of plan', () {
+    /// Owner, on the Staff screen, on a plan whose staff cap they have already
+    /// filled. The demo seeds three accounts and Free allows two.
+    Future<AppStore> atTheStaffCap(WidgetTester tester) async {
+      final store = await pumpApp(tester, size: const Size(420, 900));
+      await signIn(tester, store, StaffRole.admin);
+      await store.updateSettings(store.settings.copyWith(plan: Plan.free));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text(store.text.more));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text(store.text.staff).last);
+      await tester.pumpAndSettle();
+      return store;
+    }
+
+    testWidgets('the meter says so before the button does', (tester) async {
+      final store = await atTheStaffCap(tester);
+      // "3 of 2 used" is not a typo — the seeded restaurant is over a cap it
+      // was moved onto, which is exactly what a downgrade looks like.
+      expect(find.text(store.text.usedOf(store.accounts.length, 2)),
+          findsOneWidget);
+      expect(store.atStaffLimit, isTrue);
+    });
+
+    testWidgets('Add staff opens the upgrade sheet instead of a form',
+        (tester) async {
+      final store = await atTheStaffCap(tester);
+
+      await tester.tap(find.text(store.text.addStaff));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(UpgradeSheet), findsOneWidget);
+      // The wall is named with the number, so the merchant can tell how much
+      // bigger they need to go.
+      expect(find.textContaining(store.text.planBasic), findsWidgets);
+      expect(find.text(store.text.sendRequest), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('sending a request shows that it landed', (tester) async {
+      final store = await atTheStaffCap(tester);
+      await tester.tap(find.text(store.text.addStaff));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text(store.text.sendRequest));
+      await tester.pumpAndSettle();
+
+      expect(store.upgradeRequest?.toPlan, Plan.basic);
+      // Proof on screen, not just in the database: the plan change and the
+      // number we will ring.
+      expect(find.text(store.text.upgradeRequestPending), findsOneWidget);
+      expect(find.textContaining(store.settings.phone), findsWidgets);
+      expect(find.text(store.text.sendRequest), findsNothing);
+
+      // And it can be taken back.
+      await tester.tap(find.text(store.text.withdrawRequest));
+      await tester.pumpAndSettle();
+      expect(store.upgradeRequest, isNull);
     });
   });
 }

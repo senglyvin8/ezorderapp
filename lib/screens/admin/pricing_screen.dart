@@ -4,8 +4,11 @@ import 'package:provider/provider.dart';
 import '../../data/app_store.dart';
 import '../../l10n/app_text.dart';
 import '../../models/plan.dart';
+import '../../models/upgrade_request.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/app_chrome.dart';
+import '../../widgets/upgrade_request_card.dart';
+import '../../widgets/upgrade_sheet.dart';
 
 /// The three plans, and which one this restaurant is on.
 ///
@@ -13,6 +16,11 @@ import '../../widgets/app_chrome.dart';
 /// otherwise: it says what each plan gives you and how to change, and the
 /// change is a conversation. A fake "Upgrade" button that took a card number
 /// and did nothing would be worse than an honest one that does not.
+///
+/// What it does do is start that conversation and then show that it started:
+/// an open request sits at the top of the screen with the date it was sent
+/// and the number we will call. A request you cannot see the state of feels
+/// exactly like one nobody read.
 class PricingScreen extends StatelessWidget {
   const PricingScreen({super.key});
 
@@ -33,6 +41,10 @@ class PricingScreen extends StatelessWidget {
         child: ListView(
           padding: const EdgeInsets.fromLTRB(16, 16, 16, 28),
           children: [
+            if (store.upgradeRequest?.isOpen ?? false) ...[
+              UpgradeRequestCard(request: store.upgradeRequest!, store: store),
+              const SizedBox(height: 14),
+            ],
             for (final plan in Plan.values) ...[
               _PlanCard(
                 plan: plan,
@@ -133,6 +145,24 @@ class _PlanCard extends StatelessWidget {
           ),
           _Line(text: t.staffLimit(plan.maxStaff!)),
           _Line(text: t.ordersUnlimited),
+          // Only on the plans above this one. Offering to "ask for" the plan
+          // they are already on, or a smaller one, is an invitation to file a
+          // request nobody can act on.
+          if (plan.index > store.settings.plan.index &&
+              !(store.upgradeRequest?.isOpen ?? false)) ...[
+            const SizedBox(height: 6),
+            OutlinedButton(
+              onPressed: () => showUpgradeSheet(
+                context,
+                reason: UpgradeReason.manual,
+                toPlan: plan,
+              ),
+              style: OutlinedButton.styleFrom(
+                minimumSize: const Size(double.infinity, 46),
+              ),
+              child: Text(t.askForPlan),
+            ),
+          ],
         ],
       ),
     );

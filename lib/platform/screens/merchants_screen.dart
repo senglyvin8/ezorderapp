@@ -8,6 +8,7 @@ import '../merchant.dart';
 import '../platform_store.dart';
 import 'merchant_sheet.dart';
 import 'new_merchant_sheet.dart';
+import 'requests_screen.dart';
 
 /// Every restaurant on the platform.
 ///
@@ -58,6 +59,17 @@ class _MerchantsScreenState extends State<MerchantsScreen> {
         subtitle: store.signedInAs,
         actions: [
           IconButton(
+            tooltip: 'Upgrade requests',
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(builder: (_) => const RequestsScreen()),
+            ),
+            icon: Badge(
+              isLabelVisible: store.openRequestCount > 0,
+              label: Text('${store.openRequestCount}'),
+              child: const Icon(Icons.mark_email_unread_rounded),
+            ),
+          ),
+          IconButton(
             tooltip: 'Refresh',
             onPressed: store.loading ? null : store.load,
             icon: const Icon(Icons.refresh_rounded),
@@ -97,6 +109,10 @@ class _MerchantsScreenState extends State<MerchantsScreen> {
                     child: ListView(
                       padding: const EdgeInsets.fromLTRB(16, 16, 16, 96),
                       children: [
+                        if (store.openRequestCount > 0) ...[
+                          _RequestsBanner(store: store),
+                          const SizedBox(height: 12),
+                        ],
                         _Headline(store: store, money: money),
                         const SizedBox(height: 18),
                         _Filters(
@@ -140,6 +156,70 @@ class _MerchantsScreenState extends State<MerchantsScreen> {
                     ),
                   ),
                 ),
+    );
+  }
+}
+
+/// Merchants waiting on a plan change, above everything else on the screen.
+///
+/// It is the only queue in the console where somebody is waiting on a reply
+/// rather than on you noticing something, and an upgrade request that goes
+/// unanswered for three days costs more than any number on the headline row.
+class _RequestsBanner extends StatelessWidget {
+  const _RequestsBanner({required this.store});
+
+  final PlatformStore store;
+
+  @override
+  Widget build(BuildContext context) {
+    final count = store.openRequestCount;
+    // Open requests come back oldest first, so the longest wait is the head of
+    // the list — the one that decides whether this banner is urgent.
+    final oldest = store.openRequests.first;
+    final days = DateTime.now().difference(oldest.createdAt).inDays;
+
+    return AppCard(
+      borderColor: AppColors.brand,
+      onTap: () => Navigator.of(context).push(
+        MaterialPageRoute<void>(builder: (_) => const RequestsScreen()),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 40,
+            height: 40,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: AppColors.brandTint,
+              borderRadius: BorderRadius.circular(AppRadius.small),
+            ),
+            child: const Icon(Icons.mark_email_unread_rounded,
+                size: 21, color: AppColors.brandDark),
+          ),
+          const SizedBox(width: 11),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  count == 1
+                      ? '1 merchant wants a bigger plan'
+                      : '$count merchants want a bigger plan',
+                  style: AppType.cardTitle,
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  days == 0
+                      ? 'Asked today'
+                      : 'Longest wait: $days ${days == 1 ? 'day' : 'days'}',
+                  style: AppType.label,
+                ),
+              ],
+            ),
+          ),
+          const Icon(Icons.chevron_right_rounded, color: AppColors.inkFaint),
+        ],
+      ),
     );
   }
 }

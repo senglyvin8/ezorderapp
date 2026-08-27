@@ -4,9 +4,11 @@ import 'package:provider/provider.dart';
 
 import '../../data/app_store.dart';
 import '../../models/restaurant_table.dart';
+import '../../models/upgrade_request.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/app_chrome.dart';
 import '../../widgets/status_badge.dart';
+import '../../widgets/upgrade_sheet.dart';
 import 'qr_screen.dart';
 
 /// Tables and their QR codes. Rule 2 — each table gets its own identifier.
@@ -73,11 +75,24 @@ class AdminTablesScreen extends StatelessWidget {
       floatingActionButton: FloatingActionButton.extended(
         heroTag: 'admin-tables-fab',
         onPressed: () async {
+          // The button stays live at the cap and opens the upgrade sheet
+          // instead of the failure. A greyed-out button with no explanation
+          // is the worst of the options: it says no and nothing else.
+          if (store.atTableLimit) {
+            await showUpgradeSheet(context, reason: UpgradeReason.tableCap);
+            return;
+          }
           try {
             final table = await store.addTable();
             if (context.mounted) showToast(context, t.tableAdded(table.name));
           } on StateError catch (error) {
-            if (context.mounted) {
+            // The database has the last word on the cap, so a client that
+            // raced past the check above still lands on the sheet rather than
+            // on a raw Postgres sentence.
+            if (!context.mounted) return;
+            if (store.atTableLimit) {
+              await showUpgradeSheet(context, reason: UpgradeReason.tableCap);
+            } else {
               showToast(context, error.message, error: true);
             }
           }

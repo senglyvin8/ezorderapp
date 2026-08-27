@@ -2,7 +2,9 @@ import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../models/plan.dart';
+import '../models/upgrade_request.dart';
 import 'merchant.dart';
+import 'upgrade_queue.dart';
 
 /// State for the operator console.
 ///
@@ -17,10 +19,26 @@ class PlatformStore extends ChangeNotifier {
   final SupabaseClient _client;
 
   List<Merchant> _merchants = [];
+  List<UpgradeTicket> _requests = [];
   bool _loading = false;
   String? _error;
 
   List<Merchant> get merchants => List.unmodifiable(_merchants);
+
+  /// The upgrade queue: merchants who have asked to be moved onto a bigger
+  /// plan. Open ones first, oldest first within that.
+  List<UpgradeTicket> get requests => List.unmodifiable(_requests);
+
+  List<UpgradeTicket> get openRequests =>
+      _requests.where((r) => r.isOpen).toList();
+
+  int get openRequestCount => openRequests.length;
+
+  /// The open request from one merchant, shown on their card. There can only
+  /// be one — the partial unique index in 0010_upgrades.sql sees to that.
+  UpgradeTicket? requestFor(String restaurantId) => _requests
+      .where((r) => r.isOpen && r.restaurantId == restaurantId)
+      .firstOrNull;
   bool get loading => _loading;
   String? get error => _error;
 
@@ -138,11 +156,27 @@ class PlatformStore extends ChangeNotifier {
       _merchants = rows
           .map((r) => Merchant.fromRow(r as Map<String, dynamic>))
           .toList();
+      _requests = await _loadRequests();
     } catch (error) {
       _error = _clean(error);
     } finally {
       _loading = false;
       notifyListeners();
+    }
+  }
+
+  /// A project that has not run 0010 yet has no queue, and the console has to
+  /// keep working for everything else it does. An empty queue is the honest
+  /// answer there — not a screen that will not open.
+  Future<List<UpgradeTicket>> _loadRequests() async {
+    try {
+      final rows =
+          await _client.rpc<List<dynamic>>('platform_upgrade_requests');
+      return rows
+          .map((r) => UpgradeTicket.fromRow(r as Map<String, dynamic>))
+          .toList();
+    } catch (_) {
+      return const [];
     }
   }
 
@@ -153,6 +187,21 @@ class PlatformStore extends ChangeNotifier {
         'p_restaurant_id': merchant.id,
         'p_plan': plan.wire,
       }));
+
+  /// Moving a merchant onto a plan closes their open request as well — a
+  /// trigger does it, in `0010_upgrades.sql`, so it happens whether the change
+  /// came from here or from the SQL editor.
+  Future<void> resolveRequest(
+    UpgradeTicket request,
+    UpgradeStatus status, {
+    String note = '',
+  }) =>
+      _run(() =>
+          _client.rpc<void>('platform_resolve_upgrade_request', params: {
+            'p_id': request.id,
+            'p_status': status.wire,
+            'p_note': note,
+          }));
 
   Future<void> setSuspended(Merchant merchant, bool suspended) => _run(() =>
       _client.rpc<void>('platform_set_suspended', params: {

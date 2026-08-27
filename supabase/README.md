@@ -20,8 +20,10 @@ You need about ten minutes and a free Supabase account.
 
 ## 2. Run the migrations
 
-Open **SQL Editor** in the dashboard and run these four files **in order**,
-pasting the contents of each and pressing Run:
+Open **SQL Editor** in the dashboard and paste `migrations/all_in_one.sql`,
+which is every file below concatenated in order. Running the numbered files
+one at a time does exactly the same thing, and is worth doing if you want to
+read what each one adds before it lands:
 
 | # | File | What it does |
 | --- | --- | --- |
@@ -29,10 +31,27 @@ pasting the contents of each and pressing Run:
 | 2 | `migrations/0002_policies.sql` | Row level security |
 | 3 | `migrations/0003_rpc.sql` | Order state machine (Rules 6, 7, 12) |
 | 4 | `migrations/0004_accounts.sql` | Staff accounts |
+| 5 | `migrations/0005_photos.sql` | Dish photos in Storage |
+| 6 | `migrations/0006_plans.sql` | Free / Basic / Pro, and the caps |
+| 7 | `migrations/0007_hardening.sql` | Tightening on what a client may write |
+| 8 | `migrations/0008_platform.sql` | The operator console |
+| 9 | `migrations/0009_platform_detail.sql` | What the console needs to triage |
+| 10 | `migrations/0010_upgrades.sql` | Upgrade requests, and how to reach you |
 
 Each should report success with no rows. If one fails, stop — later files
 depend on earlier ones, and running them out of order leaves a half-built
 schema that is more annoying to diagnose than to redo.
+
+After the last one, put your own contact details in — they are what a merchant
+who wants a bigger plan sees, and they are blank until you do:
+
+```sql
+update public.platform_settings set
+  support_phone    = '+855 12 345 678',
+  support_telegram = 'https://t.me/yourhandle',
+  support_hours    = 'Mon–Sat, 8am–8pm',
+  updated_at       = now();
+```
 
 ## 3. Turn on anonymous sign-in
 

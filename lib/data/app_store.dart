@@ -13,8 +13,10 @@ import '../models/menu_category.dart';
 import '../models/menu_item.dart';
 import '../models/order.dart';
 import '../models/restaurant_settings.dart';
+import '../models/plan.dart';
 import '../models/restaurant_table.dart';
 import '../models/staff_account.dart';
+import '../models/upgrade_request.dart';
 import 'backend/backend.dart';
 import 'backend/local_backend.dart';
 import 'demo_data.dart';
@@ -59,6 +61,11 @@ class AppStore extends ChangeNotifier {
     tables: DemoData.tables(),
     orders: const [],
     accounts: const [],
+    support: const SupportContact(
+      phone: Support.phone,
+      telegram: Support.telegram,
+      hours: Support.hours,
+    ),
   );
 
   AppMode _mode = AppMode.customer;
@@ -84,6 +91,12 @@ class AppStore extends ChangeNotifier {
   OrderType get orderType => _orderType;
 
   List<StaffAccount> get accounts => List.unmodifiable(_data.accounts);
+
+  /// How the owner reaches the people running the service.
+  SupportContact get support => _data.support;
+
+  /// The open request for a bigger plan, or null when there is none.
+  UpgradeRequest? get upgradeRequest => _data.upgradeRequest;
 
   StaffAccount? get currentUser => _backend.currentUser;
 
@@ -815,4 +828,37 @@ class AppStore extends ChangeNotifier {
 
   Future<void> updateSettings(RestaurantSettings settings) =>
       _mutate(() => _backend.updateSettings(settings));
+
+  // ------------------------------------------------------------- plan limits
+
+  /// True when the plan has no room for another staff account.
+  ///
+  /// The database decides — the caps are enforced by triggers in
+  /// `0006_plans.sql` — but the screens ask this first so the answer to "why
+  /// can I not add another?" arrives before the attempt rather than after it
+  /// fails.
+  bool get atStaffLimit => !settings.plan.canAddStaff(accounts.length);
+  bool get atTableLimit => !settings.plan.canAddTable(tables.length);
+
+  /// The plan a merchant who is blocked should be offered. The next one up,
+  /// except at the top where there is nothing to offer.
+  Plan? get suggestedPlan => settings.plan.next;
+
+  Future<void> requestUpgrade({
+    required Plan toPlan,
+    required UpgradeReason reason,
+    required String contactName,
+    required String contactPhone,
+    String note = '',
+  }) =>
+      _mutate(() => _backend.requestUpgrade(
+            toPlan: toPlan,
+            reason: reason,
+            contactName: contactName,
+            contactPhone: contactPhone,
+            note: note,
+          ));
+
+  Future<void> cancelUpgradeRequest() =>
+      _mutate(() => _backend.cancelUpgradeRequest());
 }

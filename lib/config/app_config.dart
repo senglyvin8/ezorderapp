@@ -72,6 +72,25 @@ abstract class Brand {
   static const String slug = 'demo';
 }
 
+/// How a merchant reaches *you* — the person running the service — when they
+/// want a bigger plan.
+///
+/// There is no billing, so an upgrade is a conversation, and these are the two
+/// ends of it. On a live build the same values live in `platform_settings` in
+/// the database and win over these, so changing your Telegram handle does not
+/// need an app release. These are the fallback and what the demo shows.
+abstract class Support {
+  /// Dialled as `tel:`, so keep it in a form a phone can call.
+  static const String phone = '+855 12 345 678';
+
+  /// The full link, not a bare handle. Blank hides the Telegram button rather
+  /// than showing one that goes nowhere.
+  static const String telegram = 'https://t.me/ezorder';
+
+  /// Shown under the buttons so nobody sits waiting for a reply at midnight.
+  static const String hours = 'Mon–Sat, 8am–8pm';
+}
+
 // =============================================================================
 //  2. HOW IT LOOKS
 // =============================================================================

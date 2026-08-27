@@ -1,4 +1,6 @@
 import 'dart:async';
+import 'dart:convert';
+import 'dart:typed_data';
 
 import 'package:collection/collection.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -399,20 +401,70 @@ class SupabaseBackend implements Backend {
 
   // ------------------------------------------------------------- menu admin
 
+  /// Moves an uploaded picture out of the row and into Storage.
+  ///
+  /// The editor hands over base64, because that is what a file picker and a
+  /// camera produce. Putting that in the column is what made a one-dish menu
+  /// 268 KB — every diner downloading every photo on every load. So the bytes
+  /// go to a public bucket and the row keeps a URL, which a CDN serves and a
+  /// browser caches.
+  ///
+  /// Files are `<restaurant_id>/<uuid>.jpg`; the folder is what Storage's
+  /// policies check, so one restaurant's admin cannot write into another's.
+  Future<MenuItem> _withPhotoUploaded(MenuItem item) async {
+    final raw = item.photo;
+    if (raw == null || raw.isEmpty) return item;
+
+    final Uint8List bytes;
+    try {
+      bytes = base64Decode(raw);
+    } catch (_) {
+      // Not decodable, so not a picture. Drop it rather than storing a column
+      // full of something nobody can render.
+      return item.copyWith(clearPhoto: true);
+    }
+
+    final path = '$_restaurantId/${_uuid()}.jpg';
+    await _client.storage.from(_photoBucket).uploadBinary(
+          path,
+          bytes,
+          fileOptions: const FileOptions(
+            contentType: 'image/jpeg',
+            upsert: true,
+            cacheControl: '31536000',
+          ),
+        );
+    final url = _client.storage.from(_photoBucket).getPublicUrl(path);
+    // The base64 is left on the in-memory object and simply never written:
+    // _menuItemValues always sends `photo: null` on this backend, and the
+    // reload that follows replaces it with what the row actually holds.
+    return item.copyWith(photoUrl: url);
+  }
+
+  static const String _photoBucket = 'menu-photos';
+
+  /// Enough uniqueness for a filename; the row's own id is not available yet
+  /// when a dish is being created.
+  String _uuid() =>
+      '${DateTime.now().microsecondsSinceEpoch}-${_photoSeq++}';
+  int _photoSeq = 0;
+
   @override
   Future<void> addMenuItem(MenuItem item) => _guard(() async {
+        final stored = await _withPhotoUploaded(item);
         await _client.from('menu_items').insert({
           'restaurant_id': _restaurantId,
-          ..._menuItemValues(item),
+          ..._menuItemValues(stored),
         });
         await _reload();
       });
 
   @override
   Future<void> updateMenuItem(MenuItem item) => _guard(() async {
+        final stored = await _withPhotoUploaded(item);
         await _client
             .from('menu_items')
-            .update(_menuItemValues(item))
+            .update(_menuItemValues(stored))
             .eq('id', item.id);
         await _reload();
       });
@@ -623,6 +675,7 @@ class SupabaseBackend implements Backend {
         categoryId: r['category_id'] as String,
         image: r['image'] as String? ?? 'plate',
         photo: r['photo'] as String?,
+        photoUrl: r['photo_url'] as String?,
         discountPercent: (r['discount_percent'] as num?)?.toInt() ?? 0,
         available: r['available'] as bool? ?? true,
         popular: r['popular'] as bool? ?? false,
@@ -638,7 +691,10 @@ class SupabaseBackend implements Backend {
         'price': m.price,
         'discount_percent': m.discountPercent,
         'image': m.image,
-        'photo': m.photo,
+        // Deliberately null: on this backend the bytes live in Storage and the
+        // row keeps only the URL.
+        'photo': null,
+        'photo_url': m.photoUrl,
         'available': m.available,
         'popular': m.popular,
         'signature': m.signature,

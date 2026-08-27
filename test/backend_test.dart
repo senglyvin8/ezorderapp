@@ -3,6 +3,7 @@ import 'package:restaurant_qr_ordering/config/backend_config.dart';
 import 'package:restaurant_qr_ordering/data/app_store.dart';
 import 'package:restaurant_qr_ordering/data/backend/backend.dart';
 import 'package:restaurant_qr_ordering/data/backend/local_backend.dart';
+import 'package:restaurant_qr_ordering/models/menu_item.dart';
 import 'package:restaurant_qr_ordering/models/restaurant_table.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -112,6 +113,56 @@ void main() {
 
     test('is lowercased, because addresses are matched that way', () {
       expect(BackendConfig.loginEmail('AdMiN'), startsWith('admin@'));
+    });
+  });
+
+  group('where a dish photo lives', () {
+    // Storage first, then a photo held on the device, then the bundled
+    // illustration. The order matters: carrying base64 inside the menu JSON is
+    // what made a one-dish menu 268 KB on a live project.
+    const bundled = MenuItem(
+      id: 'x',
+      name: 'Rice',
+      description: '',
+      price: 5,
+      categoryId: 'c',
+      image: 'plate',
+    );
+
+    test('a dish with neither falls back to the illustration', () {
+      expect(bundled.hasPhoto, isFalse);
+      expect(bundled.photoUrl, isNull);
+      expect(bundled.photo, isNull);
+    });
+
+    test('a URL counts as a photo', () {
+      final item = bundled.copyWith(photoUrl: 'https://cdn/x.jpg');
+      expect(item.hasPhoto, isTrue);
+      expect(item.photoUrl, 'https://cdn/x.jpg');
+    });
+
+    test('device bytes count as a photo — that is the demo backend', () {
+      final item = bundled.copyWith(photo: 'aGVsbG8=');
+      expect(item.hasPhoto, isTrue);
+    });
+
+    test('removing a photo clears both, wherever it was kept', () {
+      final item = bundled
+          .copyWith(photo: 'aGVsbG8=')
+          .copyWith(photoUrl: 'https://cdn/x.jpg');
+      expect(item.hasPhoto, isTrue);
+
+      final cleared = item.copyWith(clearPhoto: true);
+      expect(cleared.hasPhoto, isFalse);
+      expect(cleared.photo, isNull);
+      expect(cleared.photoUrl, isNull);
+    });
+
+    test('a URL survives a round trip through json', () {
+      final item = bundled.copyWith(photoUrl: 'https://cdn/x.jpg');
+      final back = MenuItem.fromJson(item.toJson());
+      expect(back.photoUrl, 'https://cdn/x.jpg');
+      expect(back.photo, isNull);
     });
   });
 }

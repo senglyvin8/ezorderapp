@@ -12,6 +12,7 @@ class MenuItem {
     this.nameKm = '',
     this.descriptionKm = '',
     this.photo,
+    this.photoUrl,
     this.discountPercent = 0,
     this.available = true,
     this.popular = false,
@@ -33,8 +34,21 @@ class MenuItem {
   /// Key of a bundled illustration in `assets/food/`, without the extension.
   final String image;
 
-  /// Base64 of a photo the admin uploaded. Wins over [image] when set.
+  /// Base64 of a photo the admin uploaded.
+  ///
+  /// Only the on-device demo stores pictures this way. On a real backend the
+  /// bytes go to Storage and [photoUrl] points at them — carrying an 8 MB menu
+  /// to every diner because the pictures are inside the JSON is not a thing to
+  /// do twice.
   final String? photo;
+
+  /// Public URL of the photo in Storage. Preferred over [photo], which in turn
+  /// is preferred over the bundled illustration in [image].
+  final String? photoUrl;
+
+  /// True when there is a picture of any kind, wherever it is kept.
+  bool get hasPhoto =>
+      (photoUrl ?? '').isNotEmpty || (photo ?? '').isNotEmpty;
 
   /// Percentage off the full price, 0 means no discount.
   final int discountPercent;
@@ -72,6 +86,9 @@ class MenuItem {
     String? categoryId,
     String? image,
     String? photo,
+    String? photoUrl,
+    // Clears both: "remove photo" means the dish has no picture, wherever it
+    // happened to be stored.
     bool clearPhoto = false,
     int? discountPercent,
     bool? available,
@@ -88,6 +105,7 @@ class MenuItem {
         categoryId: categoryId ?? this.categoryId,
         image: image ?? this.image,
         photo: clearPhoto ? null : (photo ?? this.photo),
+        photoUrl: clearPhoto ? null : (photoUrl ?? this.photoUrl),
         discountPercent: discountPercent ?? this.discountPercent,
         available: available ?? this.available,
         popular: popular ?? this.popular,
@@ -104,6 +122,7 @@ class MenuItem {
         'categoryId': categoryId,
         'image': image,
         if (photo != null) 'photo': photo,
+        if (photoUrl != null) 'photoUrl': photoUrl,
         if (discountPercent > 0) 'discountPercent': discountPercent,
         'available': available,
         'popular': popular,
@@ -120,6 +139,7 @@ class MenuItem {
         categoryId: json['categoryId'] as String,
         image: json['image'] as String? ?? 'placeholder',
         photo: json['photo'] as String?,
+        photoUrl: json['photoUrl'] as String?,
         discountPercent: (json['discountPercent'] as num?)?.toInt() ?? 0,
         available: json['available'] as bool? ?? true,
         popular: json['popular'] as bool? ?? false,

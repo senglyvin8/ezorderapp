@@ -5,6 +5,7 @@ import '../data/app_store.dart';
 import '../models/merchant_code.dart';
 import '../theme/app_theme.dart';
 import 'app_chrome.dart';
+import 'join_device_sheet.dart';
 
 /// The restaurant's merchant ID, big enough to read out loud.
 ///
@@ -16,9 +17,18 @@ import 'app_chrome.dart';
 /// phone. The alphabet already avoids I, L, O and U (see [MerchantCode]); the
 /// spacing is what stops `4K7Q2M` being heard as five characters.
 class MerchantIdCard extends StatelessWidget {
-  const MerchantIdCard({super.key, required this.store, this.showBlurb = true});
+  const MerchantIdCard({
+    super.key,
+    required this.store,
+    this.showBlurb = true,
+    this.showJoin = false,
+  });
 
   final AppStore store;
+
+  /// Offer the join QR code. On the Staff screen, where somebody is setting a
+  /// new tablet up, that is the whole point of the card.
+  final bool showJoin;
 
   /// The line explaining what it is for. On the Staff screen, where it sits
   /// beside the thing it is for, it would only be noise.
@@ -67,6 +77,17 @@ class MerchantIdCard extends StatelessWidget {
           if (showBlurb) ...[
             const SizedBox(height: 8),
             Text(t.merchantIdBlurb, style: AppType.body),
+          ],
+          if (showJoin) ...[
+            const SizedBox(height: 10),
+            OutlinedButton.icon(
+              onPressed: () => showJoinDeviceSheet(context, store),
+              icon: const Icon(Icons.qr_code_2_rounded, size: 18),
+              label: Text(t.setUpADevice),
+              style: OutlinedButton.styleFrom(
+                minimumSize: const Size(double.infinity, 46),
+              ),
+            ),
           ],
         ],
       ),

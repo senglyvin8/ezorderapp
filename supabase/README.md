@@ -98,12 +98,22 @@ filter.
 ```sh
 flutter run \
   --dart-define=SUPABASE_URL=https://xxxxxxxx.supabase.co \
-  --dart-define=SUPABASE_ANON_KEY=eyJhbGciOi... \
-  --dart-define=RESTAURANT_SLUG=demo
+  --dart-define=SUPABASE_ANON_KEY=eyJhbGciOi...
 ```
 
+That is *one* app for every restaurant on the project. The first time it opens
+it asks which restaurant this device is for, and takes the merchant ID —
+`EZ-4K7Q2M`, on the owner's **Staff** screen — either typed in or scanned off
+the QR code there. It remembers, so a kitchen tablet is asked once, on the day
+it arrives.
+
+Add `--dart-define=RESTAURANT_SLUG=demo` to lock a build to one restaurant
+instead. That is the right answer when a single shop has its own app in its own
+store listing: nothing asks, and nothing can be re-pointed by somebody holding
+the tablet.
+
 The sign-in screen tells you which mode you got: demo logins if it fell back to
-the device, **Connected · demo** if it reached your project.
+the device, **This device is set up for …** if it reached your project.
 
 That key is designed to ship inside client apps and grants nothing on its own,
 because every table has row level security. The key that must **never** appear

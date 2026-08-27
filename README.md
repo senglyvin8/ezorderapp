@@ -212,16 +212,20 @@ with no configuration at all.
 Point it at a Supabase project and it becomes a product instead — one database
 behind every device, so the kitchen tablet, the till and the diner's phone are
 three views of one restaurant rather than three unrelated apps. One project
-holds many restaurants; each build says which one it serves.
+holds many restaurants, and one build serves all of them: each *device* says
+which restaurant it is for, once, by taking the owner's merchant ID.
 
 ```sh
 flutter run \
   --dart-define=SUPABASE_URL=https://xxxx.supabase.co \
-  --dart-define=SUPABASE_ANON_KEY=eyJhbGciOi... \
-  --dart-define=RESTAURANT_SLUG=demo
+  --dart-define=SUPABASE_ANON_KEY=eyJhbGciOi...
 ```
 
-**`supabase/README.md` is the setup guide** — create the project, run four
+Add `--dart-define=RESTAURANT_SLUG=demo` to lock a build to a single
+restaurant, which is what a shop with its own app in its own store listing
+wants.
+
+**`supabase/README.md` is the setup guide** — create the project, run the
 migrations, enable anonymous sign-in, provision your restaurant. Ten minutes.
 
 The seam is `lib/data/backend/`: an abstract `Backend` with two

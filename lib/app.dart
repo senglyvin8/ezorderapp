@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 
 import 'config/app_config.dart';
 import 'data/app_store.dart';
+import 'data/merchant_binding.dart';
 import 'screens/admin/admin_root.dart';
 import 'screens/cashier/cashier_root.dart';
 import 'screens/customer/customer_root.dart';
@@ -13,7 +14,13 @@ import 'theme/app_theme.dart';
 import 'widgets/session_bar.dart';
 
 class RestaurantApp extends StatelessWidget {
-  const RestaurantApp({super.key});
+  const RestaurantApp({super.key, this.onRebind});
+
+  /// How to point this device at another merchant, when that is something this
+  /// build can do at all. Null on the demo and on a build compiled for one
+  /// restaurant; the sign-in screen hides the affordance rather than offering
+  /// one that cannot work.
+  final Future<void> Function()? onRebind;
 
   @override
   Widget build(BuildContext context) {
@@ -26,12 +33,17 @@ class RestaurantApp extends StatelessWidget {
       // kitchen ticket that no longer fits its card helps nobody.
       builder: (context, child) {
         final media = MediaQuery.of(context);
-        return MediaQuery(
-          data: media.copyWith(
-            textScaler: media.textScaler
-                .clamp(minScaleFactor: 1.0, maxScaleFactor: Style.maxTextScale),
+        return Provider<RebindDevice?>.value(
+          // Always provided, sometimes null: a screen deep in the tree can ask
+          // for it without having to know whether this build has one.
+          value: onRebind == null ? null : RebindDevice(onRebind!),
+          child: MediaQuery(
+            data: media.copyWith(
+              textScaler: media.textScaler.clamp(
+                  minScaleFactor: 1.0, maxScaleFactor: Style.maxTextScale),
+            ),
+            child: child!,
           ),
-          child: child!,
         );
       },
       onGenerateRoute: _onGenerateRoute,

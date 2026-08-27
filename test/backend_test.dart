@@ -21,10 +21,13 @@ void main() {
       // The test runner passes no --dart-define, so this is the state every
       // developer and every CI run sees.
       expect(BackendConfig.usesSupabase, isFalse);
+      expect(BackendConfig.hasProject, isFalse);
       expect(BackendConfig.missing, [
         'SUPABASE_URL',
         'SUPABASE_ANON_KEY',
-        'RESTAURANT_SLUG',
+        // The slug is no longer only a define: a device that has been bound
+        // answers it too, and neither has happened here.
+        'RESTAURANT_SLUG (or a device binding)',
       ]);
     });
 
@@ -100,6 +103,44 @@ void main() {
     test('the demo slug is used when nothing is configured', () {
       expect(BackendConfig.usesSupabase, isFalse);
       expect(BackendConfig.slug, isNotEmpty);
+    });
+  });
+
+  group('which restaurant this device serves', () {
+    // The slug used to be a compile-time constant and nothing else, which
+    // meant one build of the app per restaurant. A bound device answers it
+    // instead, and the binding wins — a tablet somebody has deliberately
+    // pointed at a merchant stays pointed there.
+    tearDown(() => BackendConfig.bindSlug(null));
+
+    test('nothing bound and nothing defined is the demo', () {
+      expect(BackendConfig.hasRestaurant, isFalse);
+      expect(BackendConfig.slug, 'demo');
+    });
+
+    test('a binding decides it, and the login address follows', () {
+      BackendConfig.bindSlug('SunriseCafe');
+      expect(BackendConfig.hasRestaurant, isTrue);
+      // Lowercased on the way in: the login addresses built from it are
+      // matched that way, and a slug that differs only in case would put staff
+      // in front of a sign-in that silently never works.
+      expect(BackendConfig.slug, 'sunrisecafe');
+      expect(BackendConfig.loginEmail('admin'),
+          'admin@sunrisecafe.staff.ezorder.app');
+      expect(RestaurantTable.qrIdFor('05'), contains('sunrisecafe'));
+    });
+
+    test('unbinding puts it back', () {
+      BackendConfig.bindSlug('sunrisecafe');
+      BackendConfig.bindSlug(null);
+      expect(BackendConfig.slug, 'demo');
+      expect(BackendConfig.hasRestaurant, isFalse);
+    });
+
+    test('an empty binding is no binding, not an empty slug', () {
+      BackendConfig.bindSlug('   ');
+      expect(BackendConfig.hasRestaurant, isFalse);
+      expect(BackendConfig.slug, 'demo');
     });
   });
 

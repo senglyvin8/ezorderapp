@@ -9,7 +9,9 @@ import 'data/app_store.dart';
 import 'data/backend/backend.dart';
 import 'data/backend/local_backend.dart';
 import 'data/backend/supabase_backend.dart';
+import 'data/merchant_binding.dart';
 import 'l10n/app_text.dart';
+import 'screens/auth/merchant_bind_screen.dart';
 import 'theme/app_theme.dart';
 import 'widgets/app_chrome.dart';
 
@@ -39,6 +41,12 @@ class _BootstrapState extends State<Bootstrap> {
   AppStore? _store;
   String? _error;
 
+  /// This build has a project but no idea which restaurant to open in it, so
+  /// somebody has to say. See [MerchantBinding].
+  bool _needsBinding = false;
+  MerchantBinding? _binding;
+  bool _supabaseReady = false;
+
   @override
   void initState() {
     super.initState();
@@ -46,8 +54,22 @@ class _BootstrapState extends State<Bootstrap> {
   }
 
   Future<void> _open() async {
-    setState(() => _error = null);
+    setState(() {
+      _error = null;
+      _needsBinding = false;
+    });
     try {
+      if (BackendConfig.hasProject) {
+        await _initSupabase();
+        _binding = await MerchantBinding.read();
+        BackendConfig.bindSlug(_binding?.slug);
+        if (!BackendConfig.hasRestaurant) {
+          // Nothing to open yet, and that is not an error — it is a device
+          // nobody has set up. Ask, rather than reporting a failure.
+          if (mounted) setState(() => _needsBinding = true);
+          return;
+        }
+      }
       final store = AppStore(backend: await _openBackend());
       await store.load();
       if (mounted) setState(() => _store = store);
@@ -60,22 +82,70 @@ class _BootstrapState extends State<Bootstrap> {
     }
   }
 
+  Future<void> _initSupabase() async {
+    if (_supabaseReady) return;
+    await Supabase.initialize(
+      url: BackendConfig.supabaseUrl,
+      // Named `publishableKey` since Supabase renamed it; it still accepts the
+      // legacy `anon` JWT that older projects show.
+      publishableKey: BackendConfig.supabaseAnonKey,
+    );
+    _supabaseReady = true;
+  }
+
+  Future<void> _bind(MerchantBinding binding) async {
+    await binding.save();
+    BackendConfig.bindSlug(binding.slug);
+    if (mounted) await _open();
+  }
+
+  /// Points this device at a different merchant: forget, then ask again. The
+  /// store goes with it — it holds a restaurant that is no longer this
+  /// device's.
+  Future<void> _rebind() async {
+    await MerchantBinding.clear();
+    BackendConfig.bindSlug(null);
+    if (!mounted) return;
+    setState(() {
+      _store = null;
+      _binding = null;
+    });
+    await _open();
+  }
+
   @override
   Widget build(BuildContext context) {
     final store = _store;
     if (store != null) {
       return ChangeNotifierProvider<AppStore>.value(
         value: store,
-        child: const RestaurantApp(),
+        // Only a build that could be pointed somewhere else gets the
+        // affordance: on the demo, and on a build compiled for one shop,
+        // there is nowhere to go.
+        child: RestaurantApp(
+          onRebind: BackendConfig.hasProject &&
+                  BackendConfig.restaurantSlug.isEmpty
+              ? _rebind
+              : null,
+        ),
       );
     }
     return MaterialApp(
       title: Brand.appTitle,
       debugShowCheckedModeBanner: false,
       theme: buildAppTheme(),
-      home: _error == null
-          ? const _Opening()
-          : _CannotOpen(message: _error!, onRetry: _open),
+      home: switch ((_needsBinding, _error)) {
+        (true, _) => MerchantBindScreen(
+            // No store yet, so no language preference to read — the build's
+            // default, same as the failure screen below.
+            text: const AppText(Brand.defaultLanguage),
+            resolve: resolveMerchantByCode,
+            onBound: _bind,
+            current: _binding,
+          ),
+        (_, final String message) => _CannotOpen(message: message, onRetry: _open),
+        _ => const _Opening(),
+      },
     );
   }
 }
@@ -153,12 +223,29 @@ class _CannotOpen extends StatelessWidget {
 /// who are looking for today's orders would be worse than saying nothing.
 Future<Backend> _openBackend() async {
   if (!BackendConfig.usesSupabase) return LocalBackend();
-
-  await Supabase.initialize(
-    url: BackendConfig.supabaseUrl,
-    // Named `publishableKey` since Supabase renamed it; it still accepts the
-    // legacy `anon` JWT that older projects show.
-    publishableKey: BackendConfig.supabaseAnonKey,
-  );
   return SupabaseBackend(Supabase.instance.client);
+}
+
+/// Looks a merchant ID up in the project this build is pointed at.
+///
+/// `restaurant_by_code` is an exact match and returns only what is needed to
+/// show whose restaurant this is — see `0011_merchant_code.sql` for why that
+/// is safe to leave open to a caller with no account.
+Future<MerchantBinding?> resolveMerchantByCode(String code) async {
+  try {
+    final rows = await Supabase.instance.client
+        .rpc<List<dynamic>>('restaurant_by_code', params: {'p_code': code});
+    if (rows.isEmpty) return null;
+    final row = rows.first as Map<String, dynamic>;
+    return MerchantBinding(
+      code: code,
+      slug: row['slug'] as String,
+      name: row['name'] as String? ?? '',
+      logo: row['logo'] as String? ?? '🍽️',
+    );
+  } on StateError {
+    rethrow;
+  } catch (error) {
+    throw StateError('Could not reach the service. $error');
+  }
 }

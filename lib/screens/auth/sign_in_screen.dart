@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import '../../config/backend_config.dart';
 import '../../data/app_store.dart';
 import '../../data/demo_data.dart';
+import '../../data/merchant_binding.dart';
 import '../../l10n/app_text.dart';
 import '../../models/staff_account.dart';
 import '../../theme/app_theme.dart';
@@ -150,7 +150,7 @@ class _SignInScreenState extends State<SignInScreen> {
             if (store.isDemo)
               _DemoCredentials(t: t)
             else
-              const _ConnectedTo(slug: BackendConfig.restaurantSlug),
+              _ConnectedTo(store: store),
           ],
         ),
       ),
@@ -474,13 +474,24 @@ class _AdminForm extends StatelessWidget {
 
 /// Shown instead of the demo logins once the app is talking to a real
 /// database, so nobody wonders why `admin / admin1234` stopped working.
+/// Which restaurant this device is serving, and — on a build where that is a
+/// device setting rather than a compile-time one — how to change it.
+///
+/// This is where somebody re-purposing a tablet will look, which is why the
+/// way out lives here rather than behind an admin screen a cashier cannot
+/// reach.
 class _ConnectedTo extends StatelessWidget {
-  const _ConnectedTo({required this.slug});
+  const _ConnectedTo({required this.store});
 
-  final String slug;
+  final AppStore store;
 
   @override
   Widget build(BuildContext context) {
+    final t = store.text;
+    final rebind = context.read<RebindDevice?>();
+    final name = store.settings.name;
+    final code = store.settings.code;
+
     return AppCard(
       color: AppColors.surface,
       elevated: false,
@@ -491,7 +502,9 @@ class _ConnectedTo extends StatelessWidget {
           const SizedBox(width: 7),
           Expanded(
             child: Text(
-              'Connected · $slug',
+              code.isEmpty
+                  ? t.deviceSetUpFor(name)
+                  : '${t.deviceSetUpFor(name)} · $code',
               style: const TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.w600,
@@ -499,6 +512,20 @@ class _ConnectedTo extends StatelessWidget {
               ),
             ),
           ),
+          if (rebind != null)
+            TextButton(
+              onPressed: () async {
+                final confirmed = await confirmDialog(
+                  context,
+                  title: t.changeRestaurant,
+                  message: t.bindBlurb,
+                  confirmLabel: t.changeRestaurant,
+                  cancelLabel: t.cancel,
+                );
+                if (confirmed) await rebind();
+              },
+              child: Text(t.changeRestaurant),
+            ),
         ],
       ),
     );

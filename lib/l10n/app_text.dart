@@ -491,6 +491,36 @@ class AppText {
         'ពេលទាក់ទងមកយើង។ វាមិនផ្លាស់ប្តូរឡើយ។',
       );
   String get copy => _('Copy', 'ចម្លង');
+  String get whichRestaurant =>
+      _('Which restaurant is this device for?', 'ឧបករណ៍នេះសម្រាប់ហាងណា?');
+  String get bindBlurb => _(
+        'Enter the merchant ID from the owner, or scan the code on their '
+        'Staff screen. You only do this once on this device.',
+        'បញ្ចូលលេខសម្គាល់ហាងពីម្ចាស់ហាង ឬស្កេនកូដនៅលើអេក្រង់បុគ្គលិក។ '
+        'អ្នកធ្វើវាតែម្តងគត់នៅលើឧបករណ៍នេះ។',
+      );
+  String get scanTheCode => _('Scan the code', 'ស្កេនកូដ');
+  String get continueLabel => _('Continue', 'បន្ត');
+  String get isThisRight => _('Is this the right restaurant?', 'តើនេះជាហាងត្រឹមត្រូវទេ?');
+  String get yesThatIsUs => _("Yes, that's us", 'ត្រូវហើយ');
+  String get noMerchantWithThatId => _(
+        'No restaurant has that merchant ID',
+        'គ្មានហាងណាមានលេខសម្គាល់នេះទេ',
+      );
+  String get merchantIdMalformed => _(
+        'A merchant ID looks like EZ-4K7Q2M',
+        'លេខសម្គាល់ហាងមានទម្រង់ដូច EZ-4K7Q2M',
+      );
+  String deviceSetUpFor(String name) =>
+      _('This device is set up for $name', 'ឧបករណ៍នេះសម្រាប់ $name');
+  String get changeRestaurant => _('Change', 'ប្តូរ');
+  String get setUpADevice => _('Set up a device', 'រៀបចំឧបករណ៍');
+  String get setUpADeviceBlurb => _(
+        'Point the new phone or tablet at this code. It binds the device to '
+        'your restaurant — staff still sign in with their own PIN.',
+        'តម្រង់ទូរស័ព្ទ ឬថេប្លេតថ្មីទៅកូដនេះ។ វាភ្ជាប់ឧបករណ៍ទៅហាងរបស់អ្នក — '
+        'បុគ្គលិកនៅតែត្រូវចូលដោយលេខសម្ងាត់ផ្ទាល់ខ្លួន។',
+      );
   String get copied => _('Copied', 'បានចម្លង');
 
   // -------------------------------------------------------- asking to upgrade

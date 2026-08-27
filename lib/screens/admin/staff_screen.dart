@@ -49,7 +49,7 @@ class StaffScreen extends StatelessWidget {
             // What the owner reads out to whoever is holding the new tablet.
             // It belongs here rather than only on Settings, because this is
             // the screen they are on when they need it.
-            MerchantIdCard(store: store, showBlurb: false),
+            MerchantIdCard(store: store, showBlurb: false, showJoin: true),
             const SizedBox(height: 14),
             // The ceiling, before they reach it. "5 of 5" answers "why can I
             // not add another?" in advance instead of after the attempt.

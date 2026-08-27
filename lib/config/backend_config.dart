@@ -11,13 +11,20 @@
 /// diner's phone are looking at the same orders, and roles are enforced by
 /// Postgres rather than by the app being polite.
 ///
-/// See `supabase/README.md` for how to set the project up. Then pass the three
-/// values at build time:
+/// See `supabase/README.md` for how to set the project up. Then pass the
+/// project at build time:
 ///
 ///     flutter run \
 ///       --dart-define=SUPABASE_URL=https://xxxx.supabase.co \
-///       --dart-define=SUPABASE_ANON_KEY=eyJhbGciOi... \
-///       --dart-define=RESTAURANT_SLUG=demo
+///       --dart-define=SUPABASE_ANON_KEY=eyJhbGciOi...
+///
+/// That is one app for every restaurant on the project. Which one a given
+/// device serves is decided on the device, by entering the merchant ID or
+/// scanning the owner's code once — see [MerchantBinding].
+///
+/// Adding `--dart-define=RESTAURANT_SLUG=demo` locks the build to one
+/// restaurant instead, which is what you want when a single shop has its own
+/// app in its own store listing. Nothing then asks, and nothing can wander.
 ///
 /// They are compile-time constants, so a build with no defines is a demo build
 /// and cannot accidentally talk to your live restaurant.
@@ -41,20 +48,42 @@ abstract class BackendConfig {
   static const String supabaseAnonKey =
       String.fromEnvironment('SUPABASE_ANON_KEY', defaultValue: '');
 
-  /// Which restaurant this build serves.
+  /// Which restaurant this build serves, if it serves exactly one.
   ///
-  /// One Supabase project holds many restaurants, so the app has to say which
-  /// one it is. It is the `slug` you passed to `provision_restaurant()`, and
-  /// it is also what appears in the table QR links.
+  /// Optional now. A build with a slug is locked to that restaurant, which is
+  /// what you want for a single shop with its own app. A build without one
+  /// serves whichever merchant the device was bound to — see
+  /// [MerchantBinding] — which is what you want for a hundred of them.
   static const String restaurantSlug =
       String.fromEnvironment('RESTAURANT_SLUG', defaultValue: '');
 
-  /// True only when all three are present. Anything less and the app runs the
-  /// on-device demo, rather than half-connecting and failing at the first tap.
-  static bool get usesSupabase =>
-      supabaseUrl.isNotEmpty &&
-      supabaseAnonKey.isNotEmpty &&
-      restaurantSlug.isNotEmpty;
+  /// The merchant this device was bound to at run time, if any.
+  ///
+  /// A mutable static is not a thing to reach for lightly, and it is here
+  /// because the slug is read from static context all over the app —
+  /// [loginEmail], [tableLink], the staff directory. Threading a value through
+  /// all of those would be a larger change than the one being made. It is set
+  /// once, by the bootstrap, before any of them is called.
+  static String? _boundSlug;
+
+  static void bindSlug(String? slug) {
+    final value = slug?.trim().toLowerCase();
+    _boundSlug = (value == null || value.isEmpty) ? null : value;
+  }
+
+  /// True when this build has a project to talk to at all. Whether it knows
+  /// *which* restaurant is a separate question — see [hasRestaurant].
+  static bool get hasProject =>
+      supabaseUrl.isNotEmpty && supabaseAnonKey.isNotEmpty;
+
+  /// True when there is a project and a restaurant to open in it. Anything
+  /// less and the app runs the on-device demo, rather than half-connecting
+  /// and failing at the first tap.
+  static bool get usesSupabase => hasProject && hasRestaurant;
+
+  /// Either the build was told, or the device was bound.
+  static bool get hasRestaurant =>
+      restaurantSlug.isNotEmpty || (_boundSlug?.isNotEmpty ?? false);
 
   /// Where the customer-facing web app is hosted, e.g.
   /// `https://ezorder.vercel.app`. No trailing slash.
@@ -78,20 +107,29 @@ abstract class BackendConfig {
       '${publicUrl.replaceAll(RegExp(r'/+$'), '')}'
       '/#/order/$slug/table/$tableNumber';
 
-  /// The slug actually in force: the configured restaurant when connected,
-  /// and the bundled demo's slug otherwise.
+  /// The slug actually in force: what the device was bound to, else the
+  /// restaurant this build was compiled for, else the bundled demo's.
+  ///
+  /// The binding wins over the compile-time value so a tablet that has been
+  /// deliberately pointed at a merchant stays pointed there.
   ///
   /// Table QR identifiers are built from this, which is what keeps them unique
   /// once one Supabase project holds more than one restaurant.
-  static String get slug =>
-      usesSupabase ? restaurantSlug.toLowerCase() : Brand.slug;
+  static String get slug {
+    final bound = _boundSlug;
+    if (bound != null && bound.isNotEmpty) return bound;
+    return restaurantSlug.isNotEmpty ? restaurantSlug.toLowerCase() : Brand.slug;
+  }
 
   /// What is missing, for the diagnostic shown on the sign-in screen when
   /// someone expected a live build and got the demo.
+  ///
+  /// The slug is only listed when there is a project but nothing has been
+  /// bound: with a device binding it is not missing, it is answered elsewhere.
   static List<String> get missing => [
         if (supabaseUrl.isEmpty) 'SUPABASE_URL',
         if (supabaseAnonKey.isEmpty) 'SUPABASE_ANON_KEY',
-        if (restaurantSlug.isEmpty) 'RESTAURANT_SLUG',
+        if (!hasRestaurant) 'RESTAURANT_SLUG (or a device binding)',
       ];
 
   /// The login address for a member of staff.

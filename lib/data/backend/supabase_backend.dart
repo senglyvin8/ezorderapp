@@ -338,8 +338,8 @@ class SupabaseBackend implements Backend {
   // ------------------------------------------------------------------- auth
 
   @override
-  Future<StaffAccount?> signInWithPassword(String username, String password) =>
-      _guard(() => _signIn(BackendConfig.loginEmail(username.trim()), password));
+  Future<StaffAccount?> signInWithPassword(String identifier, String password) =>
+      _guard(() => _signIn(BackendConfig.authAddressFor(identifier), password));
 
   @override
   Future<StaffAccount?> signInWithPin(String accountId, String pin) =>
@@ -633,6 +633,7 @@ class SupabaseBackend implements Backend {
     required StaffRole role,
     required String secret,
     String username = '',
+    String email = '',
   }) =>
       _guard(() async {
         if (role != StaffRole.admin &&
@@ -644,12 +645,24 @@ class SupabaseBackend implements Backend {
           'p_role': role.wire,
           'p_secret': secret,
           'p_username': username.trim(),
+          'p_email': email.trim(),
         });
         await _reload();
         return (_cache?.accounts ?? const <StaffAccount>[])
                 .firstWhereOrNull((a) => a.id == id) ??
             StaffAccount(
-                id: id, name: name.trim(), role: role, username: username);
+                id: id,
+                name: name.trim(),
+                role: role,
+                username: username,
+                email: email.trim());
+      });
+
+  @override
+  Future<void> setMyLoginEmail(String email) => _guard(() async {
+        await _client
+            .rpc<String>('set_my_login_email', params: {'p_email': email.trim()});
+        await _reload();
       });
 
   @override
@@ -805,6 +818,9 @@ class SupabaseBackend implements Backend {
         name: r['name'] as String,
         role: StaffRole.fromWire(r['role'] as String),
         username: r['username'] as String? ?? '',
+        // Null on a project that has not run 0012 yet, where every admin is
+        // still identified by their username.
+        email: r['email'] as String? ?? '',
         active: r['active'] as bool? ?? true,
       );
 

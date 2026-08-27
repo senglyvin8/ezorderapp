@@ -22,6 +22,7 @@ class MerchantBindScreen extends StatefulWidget {
     required this.text,
     required this.resolve,
     required this.onBound,
+    this.signIn,
     this.current,
   });
 
@@ -31,6 +32,11 @@ class MerchantBindScreen extends StatefulWidget {
   final MerchantResolver resolve;
 
   final void Function(MerchantBinding binding) onBound;
+
+  /// The owner's way in: their own email and password, from which the
+  /// restaurant is worked out. Null on a build with no project behind it,
+  /// where there is nobody to ask.
+  final MerchantSignIn? signIn;
 
   /// What this device is bound to now, when it is being re-pointed rather than
   /// set up. Shown so somebody re-purposing a tablet can see what they are
@@ -43,8 +49,15 @@ class MerchantBindScreen extends StatefulWidget {
 
 class _MerchantBindScreenState extends State<MerchantBindScreen> {
   final TextEditingController _code = TextEditingController();
+  final TextEditingController _email = TextEditingController();
+  final TextEditingController _password = TextEditingController();
   bool _busy = false;
   String? _error;
+
+  /// Owners know their own email and password; whoever is holding a new
+  /// kitchen tablet knows the code the owner is showing them. Two doors, one
+  /// room.
+  bool _ownerMode = false;
 
   /// Resolved, and waiting for somebody to say yes. Confirming is worth the
   /// extra tap: a tablet bound to the wrong restaurant shows a menu that is
@@ -55,6 +68,8 @@ class _MerchantBindScreenState extends State<MerchantBindScreen> {
   @override
   void dispose() {
     _code.dispose();
+    _email.dispose();
+    _password.dispose();
     super.dispose();
   }
 
@@ -77,6 +92,35 @@ class _MerchantBindScreenState extends State<MerchantBindScreen> {
         _found = found;
         _error = found == null ? t.noMerchantWithThatId : null;
       });
+    } catch (error) {
+      if (!mounted) return;
+      setState(() => _error =
+          error is StateError ? error.message : t.cannotReachRestaurant);
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Future<void> _signIn() async {
+    final t = widget.text;
+    final signIn = widget.signIn;
+    if (signIn == null) return;
+
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
+    try {
+      final found = await signIn(_email.text, _password.text);
+      if (!mounted) return;
+      // Straight in. The credentials proved who they are and their staff row
+      // says where they work, so there is nothing left to confirm — unlike a
+      // typed code, which could belong to any restaurant at all.
+      if (found != null) {
+        widget.onBound(found);
+        return;
+      }
+      setState(() => _error = t.wrongPassword);
     } catch (error) {
       if (!mounted) return;
       setState(() => _error =
@@ -125,7 +169,9 @@ class _MerchantBindScreenState extends State<MerchantBindScreen> {
               ),
               const SizedBox(height: 20),
               Text(
-                found == null ? t.whichRestaurant : t.isThisRight,
+                found == null
+                    ? (_ownerMode ? t.adminSignIn : t.whichRestaurant)
+                    : t.isThisRight,
                 textAlign: TextAlign.center,
                 style: const TextStyle(
                   fontSize: 21,
@@ -134,7 +180,54 @@ class _MerchantBindScreenState extends State<MerchantBindScreen> {
                 ),
               ),
               const SizedBox(height: 10),
-              if (found == null) ...[
+              if (found == null && _ownerMode) ...[
+                Text(t.ownerSignInBlurb,
+                    textAlign: TextAlign.center, style: AppType.body),
+                const SizedBox(height: 22),
+                TextField(
+                  controller: _email,
+                  autocorrect: false,
+                  enableSuggestions: false,
+                  keyboardType: TextInputType.emailAddress,
+                  textInputAction: TextInputAction.next,
+                  decoration: appInput(label: t.emailAddress),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: _password,
+                  obscureText: true,
+                  onSubmitted: _busy ? null : (_) => _signIn(),
+                  decoration: appInput(label: t.password),
+                ),
+                if (_error != null) ...[
+                  const SizedBox(height: 10),
+                  Text(
+                    _error!,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      fontSize: 14.5,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.danger,
+                    ),
+                  ),
+                ],
+                const SizedBox(height: 16),
+                FilledButton(
+                  onPressed: _busy ? null : _signIn,
+                  style: FilledButton.styleFrom(
+                    minimumSize: const Size(double.infinity, 52),
+                  ),
+                  child: Text(t.signIn),
+                ),
+                const SizedBox(height: 8),
+                TextButton(
+                  onPressed: () => setState(() {
+                    _ownerMode = false;
+                    _error = null;
+                  }),
+                  child: Text(t.useMerchantIdInstead),
+                ),
+              ] else if (found == null) ...[
                 Text(t.bindBlurb,
                     textAlign: TextAlign.center, style: AppType.body),
                 const SizedBox(height: 22),
@@ -182,6 +275,16 @@ class _MerchantBindScreenState extends State<MerchantBindScreen> {
                     minimumSize: const Size(double.infinity, 52),
                   ),
                 ),
+                if (widget.signIn != null) ...[
+                  const SizedBox(height: 8),
+                  TextButton(
+                    onPressed: () => setState(() {
+                      _ownerMode = true;
+                      _error = null;
+                    }),
+                    child: Text(t.ownerSignInInstead),
+                  ),
+                ],
               ] else ...[
                 Text(
                   found.name,
@@ -214,7 +317,7 @@ class _MerchantBindScreenState extends State<MerchantBindScreen> {
                   child: Text(t.cancel),
                 ),
               ],
-              if (widget.current != null && found == null) ...[
+              if (widget.current != null && found == null && !_ownerMode) ...[
                 const SizedBox(height: 24),
                 Text(
                   t.deviceSetUpFor(widget.current!.name),

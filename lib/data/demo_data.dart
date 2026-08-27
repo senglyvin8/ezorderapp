@@ -36,6 +36,7 @@ class DemoData {
   /// prototype can be opened by anyone; a real deployment would force a
   /// password change on first run.
   static const String adminUsername = Seed.adminUsername;
+  static const String adminEmail = Seed.adminEmail;
   static const String adminPassword = Seed.adminPassword;
   static const String kitchenName = Seed.kitchenName;
   static const String cashierName = Seed.cashierName;
@@ -47,6 +48,9 @@ class DemoData {
           id: 'staff-admin',
           name: Seed.adminDisplayName,
           role: StaffRole.admin,
+          email: adminEmail,
+          // Both reach the same account. The demo keeps the old username so
+          // the legacy path has something to exercise.
           username: adminUsername,
           secret: adminPassword,
         ),

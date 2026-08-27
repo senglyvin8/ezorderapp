@@ -100,12 +100,14 @@ void main() {
       WidgetTester tester, {
       required MerchantResolver resolve,
       required void Function(MerchantBinding) onBound,
+      MerchantSignIn? signIn,
     }) async {
       await tester.pumpWidget(MaterialApp(
         home: MerchantBindScreen(
           text: t,
           resolve: resolve,
           onBound: onBound,
+          signIn: signIn,
         ),
       ));
       await tester.pumpAndSettle();
@@ -183,6 +185,63 @@ void main() {
       // means the code is wrong.
       expect(find.text('Could not reach the service.'), findsOneWidget);
       expect(find.text(t.noMerchantWithThatId), findsNothing);
+    });
+  
+    testWidgets('an owner signs in instead, and never types a code',
+        (tester) async {
+      MerchantBinding? bound;
+      await pump(
+        tester,
+        resolve: (_) async => null,
+        signIn: (email, password) async =>
+            email == 'owner@sunrise.com' && password == 'password12'
+                ? binding
+                : null,
+        onBound: (b) => bound = b,
+      );
+
+      await tester.tap(find.text(t.ownerSignInInstead));
+      await tester.pumpAndSettle();
+
+      await tester.enterText(
+          find.widgetWithText(TextField, t.emailAddress), 'owner@sunrise.com');
+      await tester.enterText(
+          find.widgetWithText(TextField, t.password), 'password12');
+      await tester.tap(find.widgetWithText(FilledButton, t.signIn));
+      await tester.pumpAndSettle();
+
+      // No confirmation step here, unlike a typed code: the credentials proved
+      // who they are and their staff row says where they work.
+      expect(bound?.slug, 'sunrise');
+    });
+
+    testWidgets('wrong credentials keep them on the form', (tester) async {
+      MerchantBinding? bound;
+      await pump(
+        tester,
+        resolve: (_) async => null,
+        signIn: (_, __) async => null,
+        onBound: (b) => bound = b,
+      );
+
+      await tester.tap(find.text(t.ownerSignInInstead));
+      await tester.pumpAndSettle();
+      await tester.enterText(
+          find.widgetWithText(TextField, t.emailAddress), 'owner@sunrise.com');
+      await tester.enterText(
+          find.widgetWithText(TextField, t.password), 'wrong');
+      await tester.tap(find.widgetWithText(FilledButton, t.signIn));
+      await tester.pumpAndSettle();
+
+      expect(bound, isNull);
+      expect(find.text(t.wrongPassword), findsOneWidget);
+    });
+
+    testWidgets('a build with nobody to sign in to does not offer it',
+        (tester) async {
+      await pump(tester, resolve: (_) async => null, onBound: (_) {});
+      expect(find.text(t.ownerSignInInstead), findsNothing);
+      expect(find.text(t.scanTheCode), findsOneWidget);
     });
   });
 }

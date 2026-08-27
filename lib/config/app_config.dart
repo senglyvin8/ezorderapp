@@ -228,10 +228,15 @@ abstract class Seed {
   // is not a substitute for a server: anyone with access to the device can
   // edit what is on the device.
 
-  /// The owner signs in with a username and password and can do everything.
-  static const String adminUsername = 'admin';
+  /// The owner signs in with an email address and a password, and can do
+  /// everything — including creating the kitchen and cashier accounts.
+  static const String adminEmail = 'owner@abcrestaurant.com';
   static const String adminPassword = 'admin1234';
   static const String adminDisplayName = 'Restaurant Owner';
+
+  /// The older way an owner was identified, before real addresses. Still
+  /// accepted, because live restaurants have accounts that use it.
+  static const String adminUsername = 'admin';
 
   /// Kitchen and cashier tap their name and key in a PIN.
   /// **PINs must be exactly six digits** — the pad signs in on the sixth key,

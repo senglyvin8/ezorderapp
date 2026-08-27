@@ -1170,4 +1170,162 @@ void main() {
       expect(reloaded.upgradeRequest?.isOpen, isTrue);
     });
   });
+
+  group('how an owner signs in', () {
+    test('with their own email address and password', () async {
+      await store.signOut();
+      expect(store.isSignedIn, isFalse);
+
+      final ok = await store.signInWithPassword(
+          DemoData.adminEmail, DemoData.adminPassword);
+
+      expect(ok, isTrue);
+      expect(store.currentUser?.role, StaffRole.admin);
+      expect(store.currentUser?.email, DemoData.adminEmail);
+    });
+
+    test('case and stray spaces do not matter', () async {
+      await store.signOut();
+      final ok = await store.signInWithPassword(
+          '  ${DemoData.adminEmail.toUpperCase()} ', DemoData.adminPassword);
+      expect(ok, isTrue);
+    });
+
+    test('the username an owner has used for a year still works', () async {
+      // Live restaurants have accounts created before addresses existed. If
+      // this ever fails, those owners are locked out of their own shop.
+      await store.signOut();
+      final ok = await store.signInWithPassword(
+          DemoData.adminUsername, DemoData.adminPassword);
+      expect(ok, isTrue);
+      expect(store.currentUser?.role, StaffRole.admin);
+    });
+
+    test('a wrong password is refused whichever identifier is used', () async {
+      await store.signOut();
+      expect(await store.signInWithPassword(DemoData.adminEmail, 'nope'),
+          isFalse);
+      expect(await store.signInWithPassword(DemoData.adminUsername, 'nope'),
+          isFalse);
+      expect(await store.signInWithPassword('nobody@example.com', 'nope'),
+          isFalse);
+      expect(store.isSignedIn, isFalse);
+    });
+  });
+
+  group('the owner creates the rest of the staff', () {
+    test('a cashier and a kitchen account, each with a PIN', () async {
+      final cashier = await store.addStaff(
+        name: 'Sreyneang',
+        role: StaffRole.cashier,
+        secret: '445566',
+      );
+      final kitchen = await store.addStaff(
+        name: 'Vuthy',
+        role: StaffRole.kitchen,
+        secret: '778899',
+      );
+
+      expect(cashier.email, isEmpty, reason: 'they sign in with a PIN');
+      expect(store.pinAccounts.map((a) => a.name), contains('Sreyneang'));
+
+      await store.signOut();
+      expect(await store.signInWithPin(kitchen.id, '778899'), isTrue);
+      expect(store.currentUser?.role, StaffRole.kitchen);
+    });
+
+    test('a second owner, with their own email', () async {
+      final second = await store.addStaff(
+        name: 'Co-owner',
+        role: StaffRole.admin,
+        secret: 'another-password',
+        email: 'Second.Owner@Example.com ',
+      );
+      expect(second.email, 'second.owner@example.com',
+          reason: 'stored the way it will be matched');
+
+      await store.signOut();
+      expect(
+          await store.signInWithPassword(
+              'second.owner@example.com', 'another-password'),
+          isTrue);
+    });
+
+    test('an owner without an address is refused', () async {
+      await expectLater(
+        store.addStaff(
+            name: 'No Address', role: StaffRole.admin, secret: 'password12'),
+        throwsStateError,
+      );
+    });
+
+    test('so is one whose address is not an address', () async {
+      await expectLater(
+        store.addStaff(
+          name: 'Bad Address',
+          role: StaffRole.admin,
+          secret: 'password12',
+          email: 'not an email',
+        ),
+        throwsStateError,
+      );
+    });
+
+    test('and one with a password too short to be worth having', () async {
+      await expectLater(
+        store.addStaff(
+          name: 'Short',
+          role: StaffRole.admin,
+          secret: 'abc',
+          email: 'short@example.com',
+        ),
+        throwsStateError,
+      );
+    });
+
+    test('two owners cannot share an address', () async {
+      await store.addStaff(
+        name: 'First',
+        role: StaffRole.admin,
+        secret: 'password12',
+        email: 'shared@example.com',
+      );
+      await expectLater(
+        store.addStaff(
+          name: 'Second',
+          role: StaffRole.admin,
+          secret: 'password12',
+          email: 'SHARED@example.com',
+        ),
+        throwsStateError,
+      );
+    });
+  });
+
+  group('an owner adopts a real address', () {
+    test('and can sign in with it afterwards', () async {
+      await store.setMyLoginEmail(' Owner@NewShop.com ');
+      expect(store.currentUser?.email, 'owner@newshop.com');
+
+      await store.signOut();
+      expect(
+          await store.signInWithPassword(
+              'owner@newshop.com', DemoData.adminPassword),
+          isTrue);
+    });
+
+    test('a malformed address is refused', () async {
+      await expectLater(store.setMyLoginEmail('nope'), throwsStateError);
+    });
+
+    test('a cashier cannot — they have no address to change', () async {
+      await store.signOut();
+      final cashier =
+          store.accounts.firstWhere((a) => a.role == StaffRole.cashier);
+      await store.signInWithPin(cashier.id, DemoData.cashierPin);
+
+      await expectLater(
+          store.setMyLoginEmail('cashier@example.com'), throwsStateError);
+    });
+  });
 }

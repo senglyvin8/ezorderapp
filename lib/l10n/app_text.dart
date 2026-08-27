@@ -49,6 +49,40 @@ class AppText {
   String get accountDisabled =>
       _('That account has been turned off', 'គណនីនេះត្រូវបានបិទ');
   String get username => _('Username', 'ឈ្មោះអ្នកប្រើ');
+  String get emailAddress => _('Email address', 'អាសយដ្ឋានអ៊ីមែល');
+  String get emailOrUsername =>
+      _('Email address', 'អាសយដ្ឋានអ៊ីមែល');
+  String get emailMalformed => _(
+        'That does not look like an email address',
+        'នេះមិនមែនជាអាសយដ្ឋានអ៊ីមែលទេ',
+      );
+  String get emailTaken => _(
+        'Another account already uses that email address',
+        'គណនីផ្សេងកំពុងប្រើអ៊ីមែលនេះ',
+      );
+  String get ownerNeedsEmail => _(
+        'An owner needs an email address to sign in with',
+        'ម្ចាស់ហាងត្រូវការអ៊ីមែលដើម្បីចូលប្រើ',
+      );
+  String get passwordTooShort => _(
+        'A password must be at least 8 characters',
+        'ពាក្យសម្ងាត់ត្រូវមានយ៉ាងតិច ៨ តួ',
+      );
+  String get signInEmail => _('Sign-in email', 'អ៊ីមែលចូលប្រើ');
+  String get signInEmailBlurb => _(
+        'What you type to sign in as the owner. Staff keep using their PIN.',
+        'អ្វីដែលអ្នកបញ្ចូលដើម្បីចូលជាម្ចាស់ហាង។ បុគ្គលិកនៅតែប្រើលេខសម្ងាត់។',
+      );
+  String get emailSaved => _('Sign-in email updated', 'បានធ្វើបច្ចុប្បន្នភាពអ៊ីមែល');
+  String get ownerSignInInstead =>
+      _('I am the owner — sign in instead', 'ខ្ញុំជាម្ចាស់ហាង — ចូលប្រើវិញ');
+  String get ownerSignInBlurb => _(
+        'Sign in with your email and password and we will work out which '
+        'restaurant this device is for.',
+        'ចូលដោយអ៊ីមែល និងពាក្យសម្ងាត់របស់អ្នក យើងនឹងដឹងថាឧបករណ៍នេះសម្រាប់ហាងណា។',
+      );
+  String get useMerchantIdInstead =>
+      _('Use a merchant ID instead', 'ប្រើលេខសម្គាល់ហាងវិញ');
   String get usernameTaken => _(
         'Another account already uses that username',
         'គណនីផ្សេងកំពុងប្រើឈ្មោះនេះ',

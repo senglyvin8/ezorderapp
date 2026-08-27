@@ -461,9 +461,10 @@ class AppStore extends ChangeNotifier {
 
   // ------------------------------------------------------ accounts & access
 
-  /// Admin sign-in. Returns false on a bad username or password.
-  Future<bool> signInWithPassword(String username, String password) async {
-    final account = await _backend.signInWithPassword(username, password);
+  /// Owner sign-in, with an email address and a password. Returns false on a
+  /// bad address or password.
+  Future<bool> signInWithPassword(String identifier, String password) async {
+    final account = await _backend.signInWithPassword(identifier, password);
     if (account == null) return false;
     _data = _backend.current;
     _mode = AppMode.staff;
@@ -502,13 +503,18 @@ class AppStore extends ChangeNotifier {
     required StaffRole role,
     required String secret,
     String username = '',
+    String email = '',
   }) =>
       _mutate(() => _backend.addStaff(
             name: name,
             role: role,
             secret: secret,
             username: username,
+            email: email,
           ));
+
+  Future<void> setMyLoginEmail(String email) =>
+      _mutate(() => _backend.setMyLoginEmail(email));
 
   Future<void> renameStaff(String id, String name) =>
       _mutate(() => _backend.renameStaff(id, name));

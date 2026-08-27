@@ -108,10 +108,14 @@ abstract class Backend {
   /// the session outlives the app.
   StaffAccount? get currentUser;
 
-  /// Admins sign in by username; kitchen and cashier tap a name and enter a
-  /// PIN. Both return null when the credentials are wrong or the account is
-  /// turned off — never a reason, so neither can be probed.
-  Future<StaffAccount?> signInWithPassword(String username, String password);
+  /// Owners sign in with their email address and a password; kitchen and
+  /// cashier tap a name and enter a PIN. Both return null when the credentials
+  /// are wrong or the account is turned off — never a reason, so neither can
+  /// be probed.
+  ///
+  /// [identifier] is whatever was typed. An address is used as it stands; a
+  /// bare word is the older per-restaurant username, which still works.
+  Future<StaffAccount?> signInWithPassword(String identifier, String password);
   Future<StaffAccount?> signInWithPin(String accountId, String pin);
   Future<void> signOut();
 
@@ -158,12 +162,21 @@ abstract class Backend {
 
   // ------------------------------------------------------------------ staff
 
+  /// Creates an account. An admin needs an [email] — that is what they will
+  /// sign in with — and everyone else a six digit PIN.
   Future<StaffAccount> addStaff({
     required String name,
     required StaffRole role,
     required String secret,
     String username = '',
+    String email = '',
   });
+  /// Changes the address the signed-in owner uses to sign in.
+  ///
+  /// Their own, and only their own: this moves an auth identity, which is not
+  /// something one person should be able to do to another.
+  Future<void> setMyLoginEmail(String email);
+
   Future<void> renameStaff(String id, String name);
   Future<void> resetStaffSecret(String id, String secret);
   Future<void> setStaffActive(String id, bool active);

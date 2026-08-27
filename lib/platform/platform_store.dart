@@ -219,13 +219,13 @@ class PlatformStore extends ChangeNotifier {
   Future<void> createMerchant({
     required String slug,
     required String name,
-    required String adminUsername,
+    required String adminEmail,
     required String adminPassword,
   }) =>
       _run(() => _client.rpc<String>('platform_create_merchant', params: {
             'p_slug': slug.trim().toLowerCase(),
             'p_name': name.trim(),
-            'p_admin_username': adminUsername.trim().toLowerCase(),
+            'p_admin_email': adminEmail.trim().toLowerCase(),
             'p_admin_password': adminPassword,
           }));
 

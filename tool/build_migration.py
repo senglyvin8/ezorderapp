@@ -22,6 +22,7 @@ PARTS = [
     "0009_platform_detail.sql",
     "0010_upgrades.sql",
     "0011_merchant_code.sql",
+    "0012_admin_email.sql",
 ]
 
 HEADER = """\

@@ -10,6 +10,7 @@ import '../../models/menu_item.dart';
 import '../../models/order.dart';
 import '../../models/restaurant_settings.dart';
 import '../../config/app_config.dart';
+import '../../models/email_address.dart';
 import '../../models/plan.dart';
 import '../../models/restaurant_table.dart';
 import '../../models/staff_account.dart';
@@ -210,15 +211,21 @@ class LocalBackend implements Backend {
 
   @override
   Future<StaffAccount?> signInWithPassword(
-      String username, String password) async {
+      String identifier, String password) async {
     // Hashing is deliberately slow; yielding first lets the caller paint a
     // progress state before the main thread blocks on it.
     await Future<void>.delayed(Duration.zero);
+    // Either identifier reaches the same account: an owner types the address
+    // they were given, and one who has been signing in with a username for a
+    // year carries on doing that.
+    final typed = identifier.trim().toLowerCase();
     final account = _accounts
         .where((a) =>
             a.usesPassword &&
             a.active &&
-            a.username.toLowerCase() == username.trim().toLowerCase())
+            typed.isNotEmpty &&
+            (a.email.toLowerCase() == typed ||
+                a.username.toLowerCase() == typed))
         .firstOrNull;
     if (account == null || !account.verify(password)) return null;
     _currentUserId = account.id;
@@ -248,6 +255,7 @@ class LocalBackend implements Backend {
     required StaffRole role,
     required String secret,
     String username = '',
+    String email = '',
   }) async {
     _require(_canManage, 'manage staff');
     // Mirrors the trigger in 0006_plans.sql. Counts everyone with an account,
@@ -263,7 +271,24 @@ class LocalBackend implements Backend {
     if (role != StaffRole.admin && secret.length != StaffAccount.pinLength) {
       throw StateError('A PIN must be ${StaffAccount.pinLength} digits');
     }
-    // Sign-in matches the *first* account with the username typed, so a
+
+    final address = EmailAddress.normalize(email);
+    if (role == StaffRole.admin) {
+      // An owner signs in with an address, so there has to be one. The older
+      // username form is still accepted for the accounts that already have it,
+      // which is why this is not simply "an admin needs an email".
+      if (address == null && username.trim().isEmpty) {
+        throw StateError('An owner needs an email address to sign in with');
+      }
+      if (address == null && email.trim().isNotEmpty) {
+        throw StateError('That does not look like an email address');
+      }
+      if (secret.trim().length < 8) {
+        throw StateError('A password must be at least 8 characters');
+      }
+    }
+
+    // Sign-in matches the *first* account with the identifier typed, so a
     // duplicate would lock the second admin out for good with nothing on
     // screen to explain why. PINs need no such check: staff are picked by name
     // first, so the PIN is only ever verified against the chosen account.
@@ -272,16 +297,40 @@ class LocalBackend implements Backend {
         _accounts.any((a) => a.username.toLowerCase() == wanted)) {
       throw StateError('Another account already uses that username');
     }
+    if (address != null &&
+        _accounts.any((a) => a.email.toLowerCase() == address)) {
+      throw StateError('Another account already uses that email address');
+    }
+
     final account = StaffAccount.create(
       id: _uid('staff'),
       name: name.trim(),
       role: role,
       secret: secret,
       username: username.trim(),
+      email: address ?? '',
     );
     _accounts = [..._accounts, account];
     _commit();
     return account;
+  }
+
+  @override
+  Future<void> setMyLoginEmail(String email) async {
+    _require(_canManage, 'change the sign-in email');
+    final address = EmailAddress.normalize(email);
+    if (address == null) {
+      throw StateError('That does not look like an email address');
+    }
+    final me = currentUser;
+    if (me == null) throw StateError('Sign in first');
+    if (_accounts.any((a) => a.id != me.id && a.email.toLowerCase() == address)) {
+      throw StateError('Another account already uses that email address');
+    }
+    _accounts = _accounts
+        .map((a) => a.id == me.id ? a.copyWith(email: address) : a)
+        .toList();
+    _commit();
   }
 
   @override

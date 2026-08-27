@@ -22,8 +22,8 @@ enum StaffRole {
   bool get canTakePayment => this == StaffRole.admin || this == StaffRole.cashier;
 }
 
-/// A staff member. Admins sign in with a username and password; kitchen and
-/// cashier staff tap their name and enter a six digit PIN.
+/// A staff member. Admins sign in with an email address and a password;
+/// kitchen and cashier staff tap their name and enter a six digit PIN.
 class StaffAccount {
   /// Every staff PIN is exactly this long, so the pad can submit on the last
   /// digit instead of asking for a confirm tap.
@@ -36,6 +36,7 @@ class StaffAccount {
     this.salt = '',
     this.secretHash = '',
     this.username = '',
+    this.email = '',
     this.active = true,
   });
 
@@ -43,8 +44,20 @@ class StaffAccount {
   final String name;
   final StaffRole role;
 
-  /// Only admins have one; staff are picked from a list instead.
+  /// The address an admin signs in with. Kitchen and cashier staff have none:
+  /// they are picked from a list and identified by a PIN.
+  final String email;
+
+  /// The older way an admin was identified, before real addresses.
+  ///
+  /// Kept because live restaurants have accounts that use it: their login
+  /// address is derived as `<username>@<slug>.staff.ezorder.app` and nothing
+  /// about that has changed. New admins get an [email] instead.
   final String username;
+
+  /// What this person types to sign in — their address, or the legacy
+  /// username. Empty for anyone who signs in with a PIN.
+  String get loginIdentifier => email.isNotEmpty ? email : username;
 
   /// Empty when the account lives behind Supabase Auth: the secret is the
   /// server's to hold, and this device never sees it. Only the on-device demo
@@ -67,6 +80,7 @@ class StaffAccount {
     String? name,
     StaffRole? role,
     String? username,
+    String? email,
     String? salt,
     String? secretHash,
     bool? active,
@@ -76,6 +90,7 @@ class StaffAccount {
         name: name ?? this.name,
         role: role ?? this.role,
         username: username ?? this.username,
+        email: email ?? this.email,
         salt: salt ?? this.salt,
         secretHash: secretHash ?? this.secretHash,
         active: active ?? this.active,
@@ -92,6 +107,7 @@ class StaffAccount {
         'name': name,
         'role': role.wire,
         if (username.isNotEmpty) 'username': username,
+        if (email.isNotEmpty) 'email': email,
         if (salt.isNotEmpty) 'salt': salt,
         if (secretHash.isNotEmpty) 'secretHash': secretHash,
         'active': active,
@@ -102,6 +118,7 @@ class StaffAccount {
         name: json['name'] as String,
         role: StaffRole.fromWire(json['role'] as String),
         username: json['username'] as String? ?? '',
+        email: json['email'] as String? ?? '',
         salt: json['salt'] as String? ?? '',
         secretHash: json['secretHash'] as String? ?? '',
         active: json['active'] as bool? ?? true,
@@ -115,6 +132,7 @@ class StaffAccount {
     required StaffRole role,
     required String secret,
     String username = '',
+    String email = '',
   }) {
     final salt = Credentials.newSalt();
     return StaffAccount(
@@ -122,6 +140,7 @@ class StaffAccount {
       name: name,
       role: role,
       username: username,
+      email: email,
       salt: salt,
       secretHash: Credentials.hash(secret, salt),
     );

@@ -442,7 +442,12 @@ class _AdminForm extends StatelessWidget {
         TextField(
           controller: username,
           autocorrect: false,
-          decoration: appInput(label: t.username),
+          enableSuggestions: false,
+          keyboardType: TextInputType.emailAddress,
+          // Labelled as an address because that is what a new owner has. An
+          // owner still signing in with the username they were given years
+          // ago types it here and it works exactly as before.
+          decoration: appInput(label: t.emailOrUsername),
         ),
         const SizedBox(height: 12),
         TextField(
@@ -558,7 +563,7 @@ class _DemoCredentials extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           const Text(
-            'Owner    ${DemoData.adminUsername} / ${DemoData.adminPassword}\n'
+            'Owner    ${DemoData.adminEmail} / ${DemoData.adminPassword}\n'
             'Kitchen  ${DemoData.kitchenName} · PIN ${DemoData.kitchenPin}\n'
             'Cashier  ${DemoData.cashierName} · PIN ${DemoData.cashierPin}',
             style: TextStyle(

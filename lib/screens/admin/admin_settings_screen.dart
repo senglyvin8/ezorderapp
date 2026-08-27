@@ -6,6 +6,7 @@ import '../../l10n/app_text.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/app_chrome.dart';
 import '../../widgets/merchant_id_card.dart';
+import '../../widgets/sign_in_email_card.dart';
 
 /// Restaurant profile, currency and the payment methods the cashier offers
 /// (Rule 10).
@@ -221,6 +222,8 @@ class _AdminSettingsScreenState extends State<AdminSettingsScreen> {
                 ],
               ),
             ),
+            const SizedBox(height: 10),
+            SignInEmailCard(store: store),
             const SizedBox(height: 10),
             MerchantIdCard(store: store),
             const SizedBox(height: 24),

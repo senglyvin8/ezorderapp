@@ -132,12 +132,25 @@ abstract class BackendConfig {
         if (!hasRestaurant) 'RESTAURANT_SLUG (or a device binding)',
       ];
 
-  /// The login address for a member of staff.
+  /// The login address derived for a member of staff.
   ///
-  /// Staff never type an email. An admin's is derived from the username they
-  /// type; everyone else's from the id the PIN pad already holds. This mirrors
-  /// `staff_login_email()` in `supabase/migrations/0004_accounts.sql` — change
-  /// one and you must change the other.
+  /// Kitchen and cashier staff never type an address: theirs is built from the
+  /// id the PIN pad already holds. The same shape was once used for admins,
+  /// derived from a username, and still is for the accounts that were created
+  /// that way. Mirrors `staff_login_email()` in
+  /// `supabase/migrations/0004_accounts.sql` — change one and you must change
+  /// the other.
   static String loginEmail(String local) =>
       '${local.toLowerCase()}@$slug.staff.ezorder.app';
+
+  /// What to actually sign in with, given whatever the person typed.
+  ///
+  /// An owner now types their own email address, which is used as it stands.
+  /// Anything without an `@` is the older username form and is derived as it
+  /// always was — a restaurant whose owner has signed in the same way for a
+  /// year should not discover one morning that it has stopped working.
+  static String authAddressFor(String typed) {
+    final value = typed.trim();
+    return value.contains('@') ? value.toLowerCase() : loginEmail(value);
+  }
 }

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
+import '../../models/email_address.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/app_chrome.dart';
 import '../platform_store.dart';
@@ -35,7 +36,7 @@ class _NewMerchantSheetState extends State<_NewMerchantSheet> {
   final _formKey = GlobalKey<FormState>();
   final _name = TextEditingController();
   final _slug = TextEditingController();
-  final _username = TextEditingController(text: 'admin');
+  final _email = TextEditingController();
   final _password = TextEditingController();
 
   bool _busy = false;
@@ -59,7 +60,7 @@ class _NewMerchantSheetState extends State<_NewMerchantSheet> {
   void dispose() {
     _name.dispose();
     _slug.dispose();
-    _username.dispose();
+    _email.dispose();
     _password.dispose();
     super.dispose();
   }
@@ -71,7 +72,7 @@ class _NewMerchantSheetState extends State<_NewMerchantSheet> {
       await store.createMerchant(
         slug: _slug.text,
         name: _name.text,
-        adminUsername: _username.text,
+        adminEmail: _email.text,
         adminPassword: _password.text,
       );
       if (!mounted) return;
@@ -165,12 +166,19 @@ class _NewMerchantSheetState extends State<_NewMerchantSheet> {
                     const SizedBox(height: 16),
                     const SectionLabel("The owner's account"),
                     TextFormField(
-                      controller: _username,
+                      controller: _email,
                       autocorrect: false,
-                      decoration: appInput(label: 'Username'),
-                      validator: (v) => (v ?? '').trim().isEmpty
-                          ? 'The owner needs a username'
-                          : null,
+                      keyboardType: TextInputType.emailAddress,
+                      decoration: appInput(
+                        label: 'Owner email',
+                        hint: 'what they will sign in with',
+                      ),
+                      // The owner's own address, so they can be handed the app
+                      // and sign in without being told a username somebody
+                      // else invented for them.
+                      validator: (v) => EmailAddress.isValid(v ?? '')
+                          ? null
+                          : 'That does not look like an email address',
                     ),
                     const SizedBox(height: 12),
                     TextFormField(

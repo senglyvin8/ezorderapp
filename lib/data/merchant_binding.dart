@@ -27,7 +27,8 @@ class MerchantBinding {
     this.logo = '🍽️',
   });
 
-  /// `EZ-4K7Q2M`, canonical.
+  /// `EZ-4K7Q2M`, canonical. Empty when the device was bound by an owner
+  /// signing in rather than by typing a code.
   final String code;
 
   /// What the login addresses and the staff directory are built from.
@@ -42,13 +43,14 @@ class MerchantBinding {
       {'code': code, 'slug': slug, 'name': name, 'logo': logo};
 
   static MerchantBinding? _fromJson(Map<String, dynamic> json) {
-    final code = MerchantCode.normalize(json['code'] as String? ?? '');
     final slug = (json['slug'] as String? ?? '').trim();
-    // A binding without a slug cannot open anything, and one without a code
-    // cannot be checked against the database. Either way it is not a binding.
-    if (code == null || slug.isEmpty) return null;
+    // The slug is what opens the restaurant, so a binding without one is not a
+    // binding. The code is not load-bearing here: an owner who signed in with
+    // their email never typed one, and a project that predates merchant IDs
+    // has none to give.
+    if (slug.isEmpty) return null;
     return MerchantBinding(
-      code: code,
+      code: MerchantCode.normalize(json['code'] as String? ?? '') ?? '',
       slug: slug,
       name: json['name'] as String? ?? '',
       logo: json['logo'] as String? ?? '🍽️',
@@ -145,3 +147,12 @@ class RebindDevice {
 /// whether it is talking to Postgres or to the on-device demo — and so the
 /// tests can answer without either.
 typedef MerchantResolver = Future<MerchantBinding?> Function(String code);
+
+/// Signs an owner in and reports which restaurant they turned out to work for.
+///
+/// The other way to set a device up, and the one an owner installing the app
+/// from a store will reach for: they know their own email and password, and
+/// they should not have to find a merchant ID to type in before they can use
+/// either. Null means the credentials were wrong.
+typedef MerchantSignIn = Future<MerchantBinding?> Function(
+    String email, String password);

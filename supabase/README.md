@@ -38,6 +38,7 @@ read what each one adds before it lands:
 | 9 | `migrations/0009_platform_detail.sql` | What the console needs to triage |
 | 10 | `migrations/0010_upgrades.sql` | Upgrade requests, and how to reach you |
 | 11 | `migrations/0011_merchant_code.sql` | The merchant ID staff sign in with |
+| 12 | `migrations/0012_admin_email.sql` | Owners sign in with their own email |
 
 Each should report success with no rows. If one fails, stop — later files
 depend on earlier ones, and running them out of order leaves a half-built

@@ -11,6 +11,7 @@ import 'data/backend/local_backend.dart';
 import 'data/backend/supabase_backend.dart';
 import 'data/merchant_binding.dart';
 import 'l10n/app_text.dart';
+import 'models/merchant_code.dart';
 import 'screens/auth/merchant_bind_screen.dart';
 import 'theme/app_theme.dart';
 import 'widgets/app_chrome.dart';
@@ -140,6 +141,7 @@ class _BootstrapState extends State<Bootstrap> {
             // default, same as the failure screen below.
             text: const AppText(Brand.defaultLanguage),
             resolve: resolveMerchantByCode,
+            signIn: signInAsOwner,
             onBound: _bind,
             current: _binding,
           ),
@@ -224,6 +226,51 @@ class _CannotOpen extends StatelessWidget {
 Future<Backend> _openBackend() async {
   if (!BackendConfig.usesSupabase) return LocalBackend();
   return SupabaseBackend(Supabase.instance.client);
+}
+
+/// Signs an owner in and works out which restaurant they run.
+///
+/// The other door onto the same room. An owner installing the app from a store
+/// knows their email and their password and should not have to go looking for
+/// a merchant ID before they can use either — their staff row already says
+/// where they work.
+///
+/// The session survives this, so the app opens with them already signed in
+/// rather than asking for the same password twice in a row.
+Future<MerchantBinding?> signInAsOwner(String email, String password) async {
+  final client = Supabase.instance.client;
+  try {
+    await client.auth.signInWithPassword(
+      email: email.trim().toLowerCase(),
+      password: password,
+    );
+  } on AuthException {
+    // Wrong address, wrong password, no such account — one answer for all
+    // three, so none of them can be told apart by trying.
+    return null;
+  }
+
+  try {
+    final rows = await client.rpc<List<dynamic>>('my_restaurant');
+    if (rows.isEmpty) {
+      // A real account that works for nobody: a platform admin, or a diner's
+      // anonymous session that somehow got here. Nothing to bind to.
+      await client.auth.signOut();
+      throw StateError('That account does not belong to a restaurant');
+    }
+    final row = rows.first as Map<String, dynamic>;
+    return MerchantBinding(
+      code: MerchantCode.normalize(row['code'] as String? ?? '') ?? '',
+      slug: row['slug'] as String,
+      name: row['name'] as String? ?? '',
+      logo: row['logo'] as String? ?? '🍽️',
+    );
+  } on StateError {
+    rethrow;
+  } catch (error) {
+    await client.auth.signOut();
+    throw StateError('Could not reach the service. $error');
+  }
 }
 
 /// Looks a merchant ID up in the project this build is pointed at.

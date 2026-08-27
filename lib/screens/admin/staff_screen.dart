@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import '../../data/app_store.dart';
+import '../../models/email_address.dart';
 import '../../models/staff_account.dart';
 import '../../models/upgrade_request.dart';
 import '../../theme/app_theme.dart';
@@ -229,7 +230,7 @@ class _StaffEditor extends StatefulWidget {
 class _StaffEditorState extends State<_StaffEditor> {
   final _formKey = GlobalKey<FormState>();
   late final TextEditingController _name;
-  late final TextEditingController _username;
+  late final TextEditingController _email;
   late final TextEditingController _secret;
   late StaffRole _role;
 
@@ -237,7 +238,7 @@ class _StaffEditorState extends State<_StaffEditor> {
   void initState() {
     super.initState();
     _name = TextEditingController(text: widget.account?.name ?? '');
-    _username = TextEditingController(text: widget.account?.username ?? '');
+    _email = TextEditingController(text: widget.account?.email ?? '');
     _secret = TextEditingController();
     _role = widget.account?.role ?? StaffRole.kitchen;
   }
@@ -245,7 +246,7 @@ class _StaffEditorState extends State<_StaffEditor> {
   @override
   void dispose() {
     _name.dispose();
-    _username.dispose();
+    _email.dispose();
     _secret.dispose();
     super.dispose();
   }
@@ -261,7 +262,7 @@ class _StaffEditorState extends State<_StaffEditor> {
           name: _name.text,
           role: _role,
           secret: _secret.text,
-          username: _needsPassword ? _username.text : '',
+          email: _needsPassword ? _email.text : '',
         );
       } else {
         store.renameStaff(widget.account!.id, _name.text.trim());
@@ -346,14 +347,30 @@ class _StaffEditorState extends State<_StaffEditor> {
                     if (_needsPassword) ...[
                       const SizedBox(height: 10),
                       TextFormField(
-                        controller: _username,
+                        controller: _email,
                         autocorrect: false,
+                        enableSuggestions: false,
+                        keyboardType: TextInputType.emailAddress,
+                        // Not editable on an existing account: the address is
+                        // the auth user's, and moving it is a different
+                        // operation from renaming somebody. An owner changes
+                        // their own from Settings.
                         enabled: _isNew,
-                        decoration: appInput(label: t.username),
-                        validator: (value) => _isNew &&
-                                (value ?? '').trim().isEmpty
-                            ? t.username
-                            : null,
+                        decoration: appInput(
+                          label: t.emailAddress,
+                          hint: widget.account?.username.isNotEmpty ?? false
+                              // A legacy admin has no address to show, so say
+                              // what they do sign in with rather than leaving
+                              // an empty box that looks broken.
+                              ? widget.account!.username
+                              : null,
+                        ),
+                        validator: (value) {
+                          if (!_isNew) return null;
+                          return EmailAddress.isValid(value ?? '')
+                              ? null
+                              : t.emailMalformed;
+                        },
                       ),
                     ],
                     const SizedBox(height: 12),

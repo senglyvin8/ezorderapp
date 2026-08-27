@@ -34,6 +34,50 @@ class PlatformStore extends ChangeNotifier {
   int get atLimitCount => _merchants.where((m) => m.atAnyLimit).length;
   int get dormantCount => _merchants.where((m) => !m.hasEverOrdered).length;
 
+  /// The number the console exists for: how many merchants want something
+  /// from you today.
+  int get needsAttentionCount =>
+      _merchants.where((m) => m.needsAttention).length;
+
+  int get notSetUpCount =>
+      _merchants.where((m) => m.health == MerchantHealth.notSetUp).length;
+  int get quietCount =>
+      _merchants.where((m) => m.health == MerchantHealth.quiet).length;
+  int get activeCount =>
+      _merchants.where((m) => m.health == MerchantHealth.active).length;
+
+  int countOf(MerchantHealth health) =>
+      _merchants.where((m) => m.health == health).length;
+
+  /// Filtered and searched, sorted so the ones needing something come first.
+  ///
+  /// Within that, by most recently active: a merchant who was busy yesterday
+  /// and has stopped is more urgent than one who has been quiet for a month.
+  List<Merchant> visible({
+    MerchantHealth? health,
+    bool onlyNeedingAttention = false,
+    String query = '',
+  }) {
+    final q = query.trim().toLowerCase();
+    final list = _merchants.where((m) {
+      if (health != null && m.health != health) return false;
+      if (onlyNeedingAttention && !m.needsAttention) return false;
+      if (q.isEmpty) return true;
+      return m.name.toLowerCase().contains(q) ||
+          m.slug.toLowerCase().contains(q) ||
+          m.phone.toLowerCase().contains(q);
+    }).toList()
+      ..sort((a, b) {
+        if (a.needsAttention != b.needsAttention) {
+          return a.needsAttention ? -1 : 1;
+        }
+        final aWhen = a.lastOrderAt ?? a.createdAt;
+        final bWhen = b.lastOrderAt ?? b.createdAt;
+        return bWhen.compareTo(aWhen);
+      });
+    return list;
+  }
+
   double get revenueToday =>
       _merchants.fold(0, (sum, m) => sum + m.revenueToday);
   int get ordersToday => _merchants.fold(0, (sum, m) => sum + m.ordersToday);

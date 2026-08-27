@@ -2,14 +2,18 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
-import '../../models/plan.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/app_chrome.dart';
 import '../merchant.dart';
 import '../platform_store.dart';
+import 'merchant_sheet.dart';
 import 'new_merchant_sheet.dart';
 
-/// Every restaurant on the platform, and the levers for each.
+/// Every restaurant on the platform.
+///
+/// Ordered and filtered around one question — which of these needs something
+/// from me today — rather than around who is biggest. A list of forty healthy
+/// restaurants is not worth reading; the three that cannot take an order are.
 class MerchantsScreen extends StatefulWidget {
   const MerchantsScreen({super.key});
 
@@ -18,6 +22,10 @@ class MerchantsScreen extends StatefulWidget {
 }
 
 class _MerchantsScreenState extends State<MerchantsScreen> {
+  final _search = TextEditingController();
+  MerchantHealth? _health;
+  bool _onlyAttention = false;
+
   @override
   void initState() {
     super.initState();
@@ -26,19 +34,21 @@ class _MerchantsScreenState extends State<MerchantsScreen> {
     });
   }
 
-  Future<void> _act(Future<void> Function() action, String done) async {
-    try {
-      await action();
-      if (mounted) showToast(context, done);
-    } on StateError catch (error) {
-      if (mounted) showToast(context, error.message, error: true);
-    }
+  @override
+  void dispose() {
+    _search.dispose();
+    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     final store = context.watch<PlatformStore>();
     final money = NumberFormat.currency(symbol: r'$', decimalDigits: 2);
+    final list = store.visible(
+      health: _health,
+      onlyNeedingAttention: _onlyAttention,
+      query: _search.text,
+    );
 
     return Scaffold(
       backgroundColor: AppColors.surface,
@@ -87,34 +97,44 @@ class _MerchantsScreenState extends State<MerchantsScreen> {
                     child: ListView(
                       padding: const EdgeInsets.fromLTRB(16, 16, 16, 96),
                       children: [
-                        _PlatformTotals(store: store, money: money),
-                        const SizedBox(height: 20),
-                        SectionLabel(
-                            '${store.merchantCount} restaurants'),
-                        if (store.merchants.isEmpty)
-                          const EmptyState(
-                            icon: Icons.storefront_rounded,
-                            title: 'No merchants yet',
-                            message:
-                                'Add the first one with the button below.',
+                        _Headline(store: store, money: money),
+                        const SizedBox(height: 18),
+                        _Filters(
+                          store: store,
+                          search: _search,
+                          health: _health,
+                          onlyAttention: _onlyAttention,
+                          onHealth: (h) => setState(() {
+                            _health = h;
+                            _onlyAttention = false;
+                          }),
+                          onAttention: (v) => setState(() {
+                            _onlyAttention = v;
+                            _health = null;
+                          }),
+                          onSearch: () => setState(() {}),
+                        ),
+                        const SizedBox(height: 14),
+                        if (list.isEmpty)
+                          EmptyState(
+                            icon: store.merchants.isEmpty
+                                ? Icons.storefront_rounded
+                                : Icons.search_off_rounded,
+                            title: store.merchants.isEmpty
+                                ? 'No merchants yet'
+                                : 'Nothing matches',
+                            message: store.merchants.isEmpty
+                                ? 'Add the first one with the button below.'
+                                : 'Try a different filter or search.',
                           )
                         else
-                          for (final m in store.merchants) ...[
+                          for (final m in list) ...[
                             _MerchantCard(
                               merchant: m,
                               money: money,
-                              onPlan: (plan) => _act(
-                                () => store.setPlan(m, plan),
-                                '${m.name} moved to ${plan.label}',
-                              ),
-                              onSuspend: (value) => _act(
-                                () => store.setSuspended(m, value),
-                                value
-                                    ? '${m.name} suspended'
-                                    : '${m.name} reinstated',
-                              ),
+                              onOpen: () => showMerchantSheet(context, m),
                             ),
-                            const SizedBox(height: 12),
+                            const SizedBox(height: 10),
                           ],
                       ],
                     ),
@@ -124,88 +144,209 @@ class _MerchantsScreenState extends State<MerchantsScreen> {
   }
 }
 
-/// The numbers that answer "how is the business doing" without opening a
-/// single merchant.
-class _PlatformTotals extends StatelessWidget {
-  const _PlatformTotals({required this.store, required this.money});
+/// What to do today, then how the business is doing. In that order — the first
+/// is actionable and the second is just interesting.
+class _Headline extends StatelessWidget {
+  const _Headline({required this.store, required this.money});
 
   final PlatformStore store;
   final NumberFormat money;
 
   @override
   Widget build(BuildContext context) {
-    final tiles = <(String, String, IconData, Color)>[
-      ('Monthly recurring', money.format(store.monthlyRecurring),
-          Icons.trending_up_rounded, AppColors.statusReady),
-      ('Merchants', '${store.merchantCount}', Icons.storefront_rounded,
-          AppColors.statusNew),
-      ('Orders today', '${store.ordersToday}', Icons.receipt_long_rounded,
-          AppColors.statusPaid),
-      ('Taken today', money.format(store.revenueToday),
-          Icons.payments_rounded, AppColors.brand),
-      // The two worth acting on: who is pressed against a cap and might pay
-      // more, and who signed up and never started.
-      ('At a plan limit', '${store.atLimitCount}',
-          Icons.trending_up_rounded, AppColors.statusCooking),
-      ('Never ordered', '${store.dormantCount}',
-          Icons.hourglass_empty_rounded, AppColors.inkFaint),
-    ];
+    final needs = store.needsAttentionCount;
 
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final columns = constraints.maxWidth > 760
-            ? 3
-            : constraints.maxWidth > 420
-                ? 3
-                : 2;
-        final scale = MediaQuery.textScalerOf(context)
-            .scale(1.0)
-            .clamp(1.0, 1.3)
-            .toDouble();
-        return GridView.count(
-          crossAxisCount: columns,
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          mainAxisSpacing: 12,
-          crossAxisSpacing: 12,
-          childAspectRatio: 1.6 / scale,
-          children: [
-            for (final tile in tiles)
-              AppCard(
-                padding: const EdgeInsets.all(13),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        AppCard(
+          color: needs == 0 ? AppColors.card : tint(AppColors.statusCooking),
+          borderColor:
+              needs == 0 ? AppColors.border : AppColors.statusCooking,
+          child: Row(
+            children: [
+              Icon(
+                needs == 0
+                    ? Icons.check_circle_rounded
+                    : Icons.flag_rounded,
+                size: 22,
+                color: needs == 0
+                    ? AppColors.statusReady
+                    : AppColors.statusCooking,
+              ),
+              const SizedBox(width: 12),
+              Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Icon(tile.$3, size: 18, color: tile.$4),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        FittedBox(
-                          fit: BoxFit.scaleDown,
-                          alignment: Alignment.centerLeft,
-                          child: Text(
-                            tile.$2,
-                            maxLines: 1,
-                            style: const TextStyle(
-                              fontSize: 21,
-                              fontWeight: FontWeight.w800,
-                              letterSpacing: -0.6,
-                            ),
-                          ),
-                        ),
-                        Text(tile.$1,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: AppType.label),
-                      ],
+                    Text(
+                      needs == 0
+                          ? 'Everything looks healthy'
+                          : '$needs ${needs == 1 ? "merchant needs" : "merchants need"} attention',
+                      style: const TextStyle(
+                          fontSize: 16.5, fontWeight: FontWeight.w800),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      needs == 0
+                          ? 'Every merchant is set up and taking orders.'
+                          : _summarise(store),
+                      style: AppType.label,
                     ),
                   ],
                 ),
               ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 14),
+        LayoutBuilder(
+          builder: (context, constraints) {
+            final columns = constraints.maxWidth > 620 ? 4 : 2;
+            final scale = MediaQuery.textScalerOf(context)
+                .scale(1.0)
+                .clamp(1.0, 1.3)
+                .toDouble();
+            final tiles = <(String, String, IconData, Color)>[
+              ('Monthly recurring', money.format(store.monthlyRecurring),
+                  Icons.trending_up_rounded, AppColors.statusReady),
+              ('Merchants', '${store.merchantCount}',
+                  Icons.storefront_rounded, AppColors.statusNew),
+              ('Orders today', '${store.ordersToday}',
+                  Icons.receipt_long_rounded, AppColors.statusPaid),
+              ('Taken today', money.format(store.revenueToday),
+                  Icons.payments_rounded, AppColors.brand),
+            ];
+            return GridView.count(
+              crossAxisCount: columns,
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              mainAxisSpacing: 10,
+              crossAxisSpacing: 10,
+              childAspectRatio: (columns == 4 ? 1.5 : 1.7) / scale,
+              children: [
+                for (final tile in tiles)
+                  AppCard(
+                    padding: const EdgeInsets.all(12),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Icon(tile.$3, size: 17, color: tile.$4),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            FittedBox(
+                              fit: BoxFit.scaleDown,
+                              alignment: Alignment.centerLeft,
+                              child: Text(
+                                tile.$2,
+                                maxLines: 1,
+                                style: const TextStyle(
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.w800,
+                                  letterSpacing: -0.6,
+                                ),
+                              ),
+                            ),
+                            Text(tile.$1,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: AppType.label),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+              ],
+            );
+          },
+        ),
+      ],
+    );
+  }
+
+  static String _summarise(PlatformStore store) {
+    final parts = <String>[
+      if (store.countOf(MerchantHealth.notSetUp) > 0)
+        '${store.countOf(MerchantHealth.notSetUp)} cannot take orders yet',
+      if (store.countOf(MerchantHealth.neverOrdered) > 0)
+        '${store.countOf(MerchantHealth.neverOrdered)} never started',
+      if (store.quietCount > 0) '${store.quietCount} gone quiet',
+      if (store.atLimitCount > 0) '${store.atLimitCount} at a plan limit',
+      if (store.suspendedCount > 0) '${store.suspendedCount} suspended',
+    ];
+    return parts.join('  ·  ');
+  }
+}
+
+class _Filters extends StatelessWidget {
+  const _Filters({
+    required this.store,
+    required this.search,
+    required this.health,
+    required this.onlyAttention,
+    required this.onHealth,
+    required this.onAttention,
+    required this.onSearch,
+  });
+
+  final PlatformStore store;
+  final TextEditingController search;
+  final MerchantHealth? health;
+  final bool onlyAttention;
+  final ValueChanged<MerchantHealth?> onHealth;
+  final ValueChanged<bool> onAttention;
+  final VoidCallback onSearch;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        TextField(
+          controller: search,
+          onChanged: (_) => onSearch(),
+          decoration: appInput(hint: 'Search by name, slug or phone').copyWith(
+            prefixIcon: const Icon(Icons.search_rounded, size: 20),
+            suffixIcon: search.text.isEmpty
+                ? null
+                : IconButton(
+                    icon: const Icon(Icons.close_rounded, size: 18),
+                    onPressed: () {
+                      search.clear();
+                      onSearch();
+                    },
+                  ),
+          ),
+        ),
+        const SizedBox(height: 10),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            _Chip(
+              label: 'All (${store.merchantCount})',
+              selected: health == null && !onlyAttention,
+              onTap: () => onHealth(null),
+            ),
+            _Chip(
+              label: 'Needs attention (${store.needsAttentionCount})',
+              selected: onlyAttention,
+              color: AppColors.statusCooking,
+              onTap: () => onAttention(true),
+            ),
+            for (final h in MerchantHealth.values)
+              if (store.countOf(h) > 0)
+                _Chip(
+                  label: '${healthLabel(h)} (${store.countOf(h)})',
+                  selected: health == h,
+                  color: healthColor(h),
+                  onTap: () => onHealth(h),
+                ),
           ],
-        );
-      },
+        ),
+      ],
     );
   }
 }
@@ -214,134 +355,120 @@ class _MerchantCard extends StatelessWidget {
   const _MerchantCard({
     required this.merchant,
     required this.money,
-    required this.onPlan,
-    required this.onSuspend,
+    required this.onOpen,
   });
 
   final Merchant merchant;
   final NumberFormat money;
-  final ValueChanged<Plan> onPlan;
-  final ValueChanged<bool> onSuspend;
+  final VoidCallback onOpen;
 
   @override
   Widget build(BuildContext context) {
     final m = merchant;
+    final colour = healthColor(m.health);
+
     return AppCard(
-      borderColor: m.suspended ? AppColors.danger : AppColors.border,
+      onTap: onOpen,
+      borderColor: m.needsAttention ? colour : AppColors.border,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              Container(
+                width: 44,
+                height: 44,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: tint(colour),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(m.logo, style: const TextStyle(fontSize: 22)),
+              ),
+              const SizedBox(width: 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Row(
+                    Text(
+                      m.name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 17,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: -0.3,
+                      ),
+                    ),
+                    const SizedBox(height: 3),
+                    Wrap(
+                      spacing: 6,
+                      runSpacing: 4,
+                      crossAxisAlignment: WrapCrossAlignment.center,
                       children: [
-                        Flexible(
-                          child: Text(
-                            m.name,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                              fontSize: 17.5,
-                              fontWeight: FontWeight.w800,
-                              letterSpacing: -0.3,
-                            ),
-                          ),
-                        ),
-                        if (m.suspended) ...[
-                          const SizedBox(width: 8),
-                          const _Tag(
-                              label: 'Suspended', color: AppColors.danger),
-                        ],
-                        if (m.atAnyLimit && !m.suspended) ...[
-                          const SizedBox(width: 8),
-                          const _Tag(
+                        _Badge(label: healthLabel(m.health), color: colour),
+                        _Badge(
+                            label: m.plan.label, color: AppColors.brandDark),
+                        if (m.atAnyLimit)
+                          const _Badge(
                               label: 'At limit',
                               color: AppColors.statusCooking),
-                        ],
                       ],
                     ),
-                    const SizedBox(height: 2),
-                    Text(
-                      '/${m.slug}   ·   since '
-                      '${DateFormat('d MMM yyyy').format(m.createdAt)}',
-                      style: AppType.label,
-                    ),
                   ],
                 ),
               ),
-              Text(
-                money.format(m.revenueTotal),
+              const SizedBox(width: 8),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Text(
+                    money.format(m.revenueTotal),
+                    style: const TextStyle(
+                        fontSize: 16.5, fontWeight: FontWeight.w800),
+                  ),
+                  const Text('all time', style: AppType.label),
+                ],
+              ),
+            ],
+          ),
+          // A merchant who cannot trade gets the reason on the card, not
+          // buried a tap away — this is the whole point of the list.
+          if (m.setupGaps.isNotEmpty) ...[
+            const SizedBox(height: 10),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: tint(AppColors.statusCooking),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Text(
+                'Cannot take orders — ${m.setupGaps.join(', ')}. '
+                'Signed up ${m.daysSinceSignUp} days ago.',
                 style: const TextStyle(
-                    fontSize: 17, fontWeight: FontWeight.w800),
+                  fontSize: 13.5,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.statusCooking,
+                ),
               ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Wrap(
-            spacing: 18,
-            runSpacing: 8,
-            children: [
-              _Stat(
-                label: 'Tables',
-                value: m.plan.maxTables == null
-                    ? '${m.tablesUsed}'
-                    : '${m.tablesUsed} / ${m.plan.maxTables}',
-                warn: m.atTableLimit,
-              ),
-              _Stat(
-                label: 'Staff',
-                value: '${m.staffUsed} / ${m.plan.maxStaff}',
-                warn: m.atStaffLimit,
-              ),
-              _Stat(label: 'Orders', value: '${m.ordersTotal}'),
-              _Stat(label: 'Today', value: '${m.ordersToday}'),
-              _Stat(
-                label: 'Last order',
-                value: m.lastOrderAt == null
-                    ? 'never'
-                    : DateFormat('d MMM').format(m.lastOrderAt!),
-                warn: m.lastOrderAt == null,
-              ),
-            ],
-          ),
-          const Divider(height: 24),
+            ),
+          ],
+          const SizedBox(height: 10),
           Row(
             children: [
-              const Text('Plan', style: AppType.label),
-              const SizedBox(width: 10),
               Expanded(
-                child: Wrap(
-                  spacing: 6,
-                  runSpacing: 6,
-                  children: [
-                    for (final plan in Plan.values)
-                      _PlanChip(
-                        plan: plan,
-                        selected: plan == m.plan,
-                        onTap: plan == m.plan ? null : () => onPlan(plan),
-                      ),
-                  ],
+                child: Text(
+                  '/${m.slug}   ·   ${m.tablesUsed} tables   ·   '
+                  '${m.menuItems} dishes   ·   ${m.ordersTotal} orders',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppType.label,
                 ),
               ),
-              TextButton.icon(
-                onPressed: () => onSuspend(!m.suspended),
-                icon: Icon(
-                  m.suspended
-                      ? Icons.play_circle_rounded
-                      : Icons.pause_circle_rounded,
-                  size: 18,
-                ),
-                label: Text(m.suspended ? 'Reinstate' : 'Suspend'),
-                style: TextButton.styleFrom(
-                  foregroundColor:
-                      m.suspended ? AppColors.statusReady : AppColors.danger,
-                ),
-              ),
+              const Icon(Icons.chevron_right_rounded,
+                  color: AppColors.inkFaint),
             ],
           ),
         ],
@@ -350,35 +477,8 @@ class _MerchantCard extends StatelessWidget {
   }
 }
 
-class _Stat extends StatelessWidget {
-  const _Stat({required this.label, required this.value, this.warn = false});
-
-  final String label;
-  final String value;
-  final bool warn;
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Text(
-          value,
-          style: TextStyle(
-            fontSize: 15.5,
-            fontWeight: FontWeight.w800,
-            color: warn ? AppColors.statusCooking : AppColors.ink,
-          ),
-        ),
-        Text(label, style: AppType.label),
-      ],
-    );
-  }
-}
-
-class _Tag extends StatelessWidget {
-  const _Tag({required this.label, required this.color});
+class _Badge extends StatelessWidget {
+  const _Badge({required this.label, required this.color});
 
   final String label;
   final Color color;
@@ -400,42 +500,67 @@ class _Tag extends StatelessWidget {
   }
 }
 
-class _PlanChip extends StatelessWidget {
-  const _PlanChip({
-    required this.plan,
+class _Chip extends StatelessWidget {
+  const _Chip({
+    required this.label,
     required this.selected,
     required this.onTap,
+    this.color = AppColors.brand,
   });
 
-  final Plan plan;
+  final String label;
   final bool selected;
-  final VoidCallback? onTap;
+  final VoidCallback onTap;
+  final Color color;
 
   @override
   Widget build(BuildContext context) {
-    final color = selected ? AppColors.brandDark : AppColors.inkSoft;
+    final ink = selected ? color : AppColors.inkSoft;
     return Material(
-      color: selected ? AppColors.brandTint : AppColors.surface,
+      color: selected ? tint(color) : AppColors.card,
       borderRadius: BorderRadius.circular(999),
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(999),
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+          padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 9),
+          constraints: BoxConstraints(
+            maxWidth: MediaQuery.sizeOf(context).width - 64,
+          ),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(999),
             border: Border.all(
-              color: selected ? AppColors.brand : AppColors.border,
-              width: selected ? 1.5 : 1,
+              color: selected ? color : AppColors.border,
+              width: selected ? 1.6 : 1,
             ),
           ),
           child: Text(
-            plan.label,
+            label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
             style: TextStyle(
-                fontSize: 13.5, fontWeight: FontWeight.w700, color: color),
+                fontSize: 14, fontWeight: FontWeight.w700, color: ink),
           ),
         ),
       ),
     );
   }
 }
+
+// ------------------------------------------------------------- health words
+
+String healthLabel(MerchantHealth health) => switch (health) {
+      MerchantHealth.suspended => 'Suspended',
+      MerchantHealth.notSetUp => 'Not set up',
+      MerchantHealth.neverOrdered => 'Never ordered',
+      MerchantHealth.quiet => 'Gone quiet',
+      MerchantHealth.active => 'Active',
+    };
+
+Color healthColor(MerchantHealth health) => switch (health) {
+      MerchantHealth.suspended => AppColors.danger,
+      MerchantHealth.notSetUp => AppColors.statusCooking,
+      MerchantHealth.neverOrdered => AppColors.statusCooking,
+      MerchantHealth.quiet => AppColors.statusPaid,
+      MerchantHealth.active => AppColors.statusReady,
+    };

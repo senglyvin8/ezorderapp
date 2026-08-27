@@ -293,20 +293,27 @@ $$;
 
 -- Admin is a superset: in a small shop the owner works the kitchen and the
 -- till as well. Mirrors StaffRole in lib/models/staff_account.dart.
+--
+-- Every one of these coalesces to false, and that is load-bearing. For a caller
+-- who is not staff at all, current_staff_role() is NULL, and `NULL = 'ADMIN'`
+-- is NULL rather than false. The guards read `if not can_manage_restaurant()
+-- then raise`, and `if NULL then` does not take the branch — so without the
+-- coalesce an anonymous caller walks straight past the permission check and is
+-- stopped only by whatever constraint happens to catch them further down.
 create or replace function public.can_manage_restaurant()
 returns boolean language sql stable
 set search_path = public, pg_temp
-as $$ select public.current_staff_role() = 'ADMIN' $$;
+as $$ select coalesce(public.current_staff_role() = 'ADMIN', false) $$;
 
 create or replace function public.can_work_kitchen()
 returns boolean language sql stable
 set search_path = public, pg_temp
-as $$ select public.current_staff_role() in ('ADMIN','KITCHEN') $$;
+as $$ select coalesce(public.current_staff_role() in ('ADMIN','KITCHEN'), false) $$;
 
 create or replace function public.can_take_payment()
 returns boolean language sql stable
 set search_path = public, pg_temp
-as $$ select public.current_staff_role() in ('ADMIN','CASHIER') $$;
+as $$ select coalesce(public.current_staff_role() in ('ADMIN','CASHIER'), false) $$;
 
 grant execute on function public.current_restaurant_id() to anon, authenticated;
 grant execute on function public.current_staff_role()   to anon, authenticated;

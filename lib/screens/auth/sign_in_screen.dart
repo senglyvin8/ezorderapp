@@ -495,7 +495,6 @@ class _ConnectedTo extends StatelessWidget {
     final t = store.text;
     final rebind = context.read<RebindDevice?>();
     final name = store.settings.name;
-    final code = store.settings.code;
 
     return AppCard(
       color: AppColors.surface,
@@ -507,9 +506,7 @@ class _ConnectedTo extends StatelessWidget {
           const SizedBox(width: 7),
           Expanded(
             child: Text(
-              code.isEmpty
-                  ? t.deviceSetUpFor(name)
-                  : '${t.deviceSetUpFor(name)} · $code',
+              t.deviceSetUpFor(name),
               style: const TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.w600,
@@ -523,7 +520,7 @@ class _ConnectedTo extends StatelessWidget {
                 final confirmed = await confirmDialog(
                   context,
                   title: t.changeRestaurant,
-                  message: t.bindBlurb,
+                  message: t.ownerSignInBlurb,
                   confirmLabel: t.changeRestaurant,
                   cancelLabel: t.cancel,
                 );

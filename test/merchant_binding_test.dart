@@ -6,65 +6,33 @@ import 'package:restaurant_qr_ordering/l10n/app_text.dart';
 import 'package:restaurant_qr_ordering/screens/auth/merchant_bind_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-/// Pointing a device at a merchant.
+/// Pointing a device at a restaurant.
 ///
 /// This is what replaced one build of the app per restaurant, so the things
 /// worth pinning are the ones that would leave somebody holding a tablet that
-/// cannot be set up: what the scanner accepts, what survives a restart, and
-/// what happens when the code is wrong.
+/// cannot be set up: that the owner's credentials are the only key, that the
+/// answer survives a restart, and that a wrong password does not look like a
+/// broken service.
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  const code = 'EZ-4K7Q2M';
   const binding = MerchantBinding(
-    code: code,
     slug: 'sunrise',
     name: 'Sunrise Cafe',
     logo: '☕',
   );
 
-  group('what the scanner accepts', () {
-    test('the join payload the owner is showing', () {
-      expect(MerchantBinding.codeFromScan(binding.joinPayload), code);
-      expect(binding.joinPayload, 'ezorder://join?m=EZ-4K7Q2M');
-    });
-
-    test('a link, whether the code is in the path or the query', () {
-      for (final link in [
-        'https://ezorder.app/join/EZ-4K7Q2M',
-        'https://ezorder.app/#/join/EZ-4K7Q2M',
-        'https://ezorder.app/setup?m=ez-4k7q2m',
-      ]) {
-        expect(MerchantBinding.codeFromScan(link), code, reason: link);
-      }
-    });
-
-    test('a code typed by hand, however it was typed', () {
-      expect(MerchantBinding.codeFromScan(' ez 4k7q2m '), code);
-      expect(MerchantBinding.codeFromScan('4K7Q2M'), code);
-    });
-
-    test('and nothing else', () {
-      // A table QR is the most likely wrong thing to point the camera at, and
-      // binding a device to a table number would be a memorable bug.
-      expect(MerchantBinding.codeFromScan('restaurant-demo-table-05'), isNull);
-      expect(MerchantBinding.codeFromScan('https://example.com'), isNull);
-      expect(MerchantBinding.codeFromScan(''), isNull);
-    });
-  });
-
   group('what the device remembers', () {
     setUp(() => SharedPreferences.setMockInitialValues({}));
 
-    test('nothing, until somebody sets it up', () async {
+    test('nothing, until an owner signs in on it', () async {
       expect(await MerchantBinding.read(), isNull);
     });
 
-    test('the merchant it was bound to, across a restart', () async {
+    test('the restaurant it was bound to, across a restart', () async {
       await binding.save();
 
       final read = await MerchantBinding.read();
-      expect(read?.code, code);
       expect(read?.slug, 'sunrise');
       expect(read?.name, 'Sunrise Cafe');
       expect(read?.logo, '☕');
@@ -88,7 +56,7 @@ void main() {
     test('a binding with no slug is no binding — it could open nothing',
         () async {
       SharedPreferences.setMockInitialValues(
-          {'rqo_merchant_binding_v1': '{"code":"$code","slug":"","name":"X"}'});
+          {'rqo_merchant_binding_v1': '{"slug":"","name":"X"}'});
       expect(await MerchantBinding.read(), isNull);
     });
   });
@@ -98,110 +66,39 @@ void main() {
 
     Future<void> pump(
       WidgetTester tester, {
-      required MerchantResolver resolve,
+      required MerchantSignIn signIn,
       required void Function(MerchantBinding) onBound,
-      MerchantSignIn? signIn,
+      VoidCallback? onGuest,
     }) async {
+      // A phone rather than the 800x600 default: the guest offer sits below
+      // the fold on a short viewport, and a list does not build what it
+      // cannot show.
+      tester.view.devicePixelRatio = 1.0;
+      tester.view.physicalSize = const Size(420, 940);
+      addTearDown(tester.view.reset);
+
       await tester.pumpWidget(MaterialApp(
         home: MerchantBindScreen(
           text: t,
-          resolve: resolve,
-          onBound: onBound,
           signIn: signIn,
+          onBound: onBound,
+          onGuest: onGuest,
         ),
       ));
       await tester.pumpAndSettle();
     }
 
-    testWidgets('a good code has to be confirmed before it binds',
+    testWidgets('the owner signs in, and the device follows them',
         (tester) async {
       MerchantBinding? bound;
       await pump(
         tester,
-        resolve: (c) async => c == code ? binding : null,
-        onBound: (b) => bound = b,
-      );
-
-      await tester.enterText(find.byType(TextField), 'ez4k7q2m');
-      await tester.tap(find.text(t.continueLabel));
-      await tester.pumpAndSettle();
-
-      // Resolved, and showing whose restaurant it is. Binding to the wrong one
-      // gives a menu that is nearly right, which is far more confusing than
-      // one that is obviously wrong — so somebody has to say yes.
-      expect(find.text('Sunrise Cafe'), findsOneWidget);
-      expect(find.text(code), findsOneWidget);
-      expect(bound, isNull, reason: 'not yet — nobody has confirmed');
-
-      await tester.tap(find.text(t.yesThatIsUs));
-      await tester.pumpAndSettle();
-      expect(bound?.slug, 'sunrise');
-    });
-
-    testWidgets('a code that matches nothing says so', (tester) async {
-      await pump(tester, resolve: (_) async => null, onBound: (_) {});
-
-      await tester.enterText(find.byType(TextField), 'EZ-000000');
-      await tester.tap(find.text(t.continueLabel));
-      await tester.pumpAndSettle();
-
-      expect(find.text(t.noMerchantWithThatId), findsOneWidget);
-      expect(find.text(t.yesThatIsUs), findsNothing);
-    });
-
-    testWidgets('a code that is not a code is caught before the round trip',
-        (tester) async {
-      var asked = false;
-      await pump(
-        tester,
-        resolve: (_) async {
-          asked = true;
-          return null;
-        },
-        onBound: (_) {},
-      );
-
-      await tester.enterText(find.byType(TextField), 'nonsense');
-      await tester.tap(find.text(t.continueLabel));
-      await tester.pumpAndSettle();
-
-      expect(find.text(t.merchantIdMalformed), findsOneWidget);
-      expect(asked, isFalse, reason: 'no point asking about a malformed code');
-    });
-
-    testWidgets('a service that cannot be reached is not a missing merchant',
-        (tester) async {
-      await pump(
-        tester,
-        resolve: (_) async => throw StateError('Could not reach the service.'),
-        onBound: (_) {},
-      );
-
-      await tester.enterText(find.byType(TextField), code);
-      await tester.tap(find.text(t.continueLabel));
-      await tester.pumpAndSettle();
-
-      // The distinction matters: one of these is worth retrying and the other
-      // means the code is wrong.
-      expect(find.text('Could not reach the service.'), findsOneWidget);
-      expect(find.text(t.noMerchantWithThatId), findsNothing);
-    });
-  
-    testWidgets('an owner signs in instead, and never types a code',
-        (tester) async {
-      MerchantBinding? bound;
-      await pump(
-        tester,
-        resolve: (_) async => null,
         signIn: (email, password) async =>
             email == 'owner@sunrise.com' && password == 'password12'
                 ? binding
                 : null,
         onBound: (b) => bound = b,
       );
-
-      await tester.tap(find.text(t.ownerSignInInstead));
-      await tester.pumpAndSettle();
 
       await tester.enterText(
           find.widgetWithText(TextField, t.emailAddress), 'owner@sunrise.com');
@@ -210,8 +107,9 @@ void main() {
       await tester.tap(find.widgetWithText(FilledButton, t.signIn));
       await tester.pumpAndSettle();
 
-      // No confirmation step here, unlike a typed code: the credentials proved
-      // who they are and their staff row says where they work.
+      // Nothing to confirm: the credentials proved who they are and their
+      // staff row said where they work, so there is no wrong restaurant to
+      // land on.
       expect(bound?.slug, 'sunrise');
     });
 
@@ -219,13 +117,10 @@ void main() {
       MerchantBinding? bound;
       await pump(
         tester,
-        resolve: (_) async => null,
         signIn: (_, __) async => null,
         onBound: (b) => bound = b,
       );
 
-      await tester.tap(find.text(t.ownerSignInInstead));
-      await tester.pumpAndSettle();
       await tester.enterText(
           find.widgetWithText(TextField, t.emailAddress), 'owner@sunrise.com');
       await tester.enterText(
@@ -237,11 +132,46 @@ void main() {
       expect(find.text(t.wrongPassword), findsOneWidget);
     });
 
-    testWidgets('a build with nobody to sign in to does not offer it',
+    testWidgets('a service that cannot be reached is not a wrong password',
         (tester) async {
-      await pump(tester, resolve: (_) async => null, onBound: (_) {});
-      expect(find.text(t.ownerSignInInstead), findsNothing);
-      expect(find.text(t.scanTheCode), findsOneWidget);
+      await pump(
+        tester,
+        signIn: (_, __) async => throw StateError('Could not reach the service.'),
+        onBound: (_) {},
+      );
+
+      await tester.enterText(
+          find.widgetWithText(TextField, t.emailAddress), 'owner@sunrise.com');
+      await tester.enterText(
+          find.widgetWithText(TextField, t.password), 'password12');
+      await tester.tap(find.widgetWithText(FilledButton, t.signIn));
+      await tester.pumpAndSettle();
+
+      // The distinction matters: one of these is worth retrying and the other
+      // means they typed something wrong.
+      expect(find.text('Could not reach the service.'), findsOneWidget);
+      expect(find.text(t.wrongPassword), findsNothing);
+    });
+
+    testWidgets('a visitor with no account is offered the demo',
+        (tester) async {
+      var guest = false;
+      await pump(
+        tester,
+        signIn: (_, __) async => null,
+        onBound: (_) {},
+        onGuest: () => guest = true,
+      );
+
+      await tester.tap(find.text(t.tryAsGuest));
+      await tester.pumpAndSettle();
+      expect(guest, isTrue);
+    });
+
+    testWidgets('and is not offered it where there is nothing to demo',
+        (tester) async {
+      await pump(tester, signIn: (_, __) async => null, onBound: (_) {});
+      expect(find.text(t.tryAsGuest), findsNothing);
     });
   });
 }

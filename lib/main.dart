@@ -12,7 +12,6 @@ import 'data/backend/supabase_backend.dart';
 import 'data/guest_mode.dart';
 import 'data/merchant_binding.dart';
 import 'l10n/app_text.dart';
-import 'models/merchant_code.dart';
 import 'screens/auth/merchant_bind_screen.dart';
 import 'theme/app_theme.dart';
 import 'widgets/app_chrome.dart';
@@ -53,6 +52,10 @@ class _BootstrapState extends State<Bootstrap> {
   /// whatever project this build was compiled against.
   bool _guest = false;
 
+  /// Set for the one boot that follows somebody choosing to look round, so
+  /// they are put behind the owner's desk rather than at a diner's table.
+  bool _greetGuest = false;
+
   @override
   void initState() {
     super.initState();
@@ -79,6 +82,18 @@ class _BootstrapState extends State<Bootstrap> {
       }
       final store = AppStore(backend: await _openBackend(guest: _guest));
       await store.load();
+
+      // A visitor evaluating the product wants to see the product. Landing
+      // them on the diner's menu shows them the one screen they could have
+      // seen without downloading anything, and hides the four that matter.
+      //
+      // Signed in as the demo owner, which is a superset: the owner's tabs
+      // carry the kitchen board and the till, and the bar above them switches
+      // to the customer view. Every role, without a password between them.
+      if (_greetGuest) {
+        _greetGuest = false;
+        await store.signInWithPassword(Seed.adminEmail, Seed.adminPassword);
+      }
       if (mounted) setState(() => _store = store);
     } catch (error) {
       if (mounted) {
@@ -111,6 +126,7 @@ class _BootstrapState extends State<Bootstrap> {
 
   Future<void> _enterGuest() async {
     await GuestMode.enter();
+    _greetGuest = true;
     if (mounted) await _open();
   }
 
@@ -159,7 +175,6 @@ class _BootstrapState extends State<Bootstrap> {
             // No store yet, so no language preference to read — the build's
             // default, same as the failure screen below.
             text: const AppText(Brand.defaultLanguage),
-            resolve: resolveMerchantByCode,
             signIn: signInAsOwner,
             onGuest: _enterGuest,
             onBound: _bind,
@@ -283,7 +298,6 @@ Future<MerchantBinding?> signInAsOwner(String email, String password) async {
     }
     final row = rows.first as Map<String, dynamic>;
     return MerchantBinding(
-      code: MerchantCode.normalize(row['code'] as String? ?? '') ?? '',
       slug: row['slug'] as String,
       name: row['name'] as String? ?? '',
       logo: row['logo'] as String? ?? '🍽️',
@@ -296,26 +310,3 @@ Future<MerchantBinding?> signInAsOwner(String email, String password) async {
   }
 }
 
-/// Looks a merchant ID up in the project this build is pointed at.
-///
-/// `restaurant_by_code` is an exact match and returns only what is needed to
-/// show whose restaurant this is — see `0011_merchant_code.sql` for why that
-/// is safe to leave open to a caller with no account.
-Future<MerchantBinding?> resolveMerchantByCode(String code) async {
-  try {
-    final rows = await Supabase.instance.client
-        .rpc<List<dynamic>>('restaurant_by_code', params: {'p_code': code});
-    if (rows.isEmpty) return null;
-    final row = rows.first as Map<String, dynamic>;
-    return MerchantBinding(
-      code: code,
-      slug: row['slug'] as String,
-      name: row['name'] as String? ?? '',
-      logo: row['logo'] as String? ?? '🍽️',
-    );
-  } on StateError {
-    rethrow;
-  } catch (error) {
-    throw StateError('Could not reach the service. $error');
-  }
-}

@@ -194,13 +194,23 @@ class SupabaseBackend implements Backend {
 
   // --------------------------------------------------------------- realtime
 
-  /// What makes the live board live. Any change to an order or one of its
-  /// lines re-reads the orders and pushes a new snapshot out; the volume is
-  /// a few rows a minute in a restaurant, so refetching beats reconstructing
-  /// state from individual row deltas and getting it subtly wrong.
+  /// What makes the live board live, and the live menu live.
+  ///
+  /// Two kinds of change, handled differently because they cost differently:
+  ///
+  ///  * **Orders** move constantly, and only the order list needs re-reading.
+  ///  * **The menu** barely moves, but when it does everything downstream of
+  ///    it is stale, so the whole restaurant is re-read. This is what makes an
+  ///    owner adding a dish appear on a diner's already-open phone instead of
+  ///    waiting for them to reload — and, more importantly, what stops a
+  ///    customer ordering something taken off the menu five minutes ago.
+  ///
+  /// Either way it refetches rather than applying row deltas. At a
+  /// restaurant's volume — a few rows a minute — that is cheaper than
+  /// reconstructing state by hand and getting it subtly wrong.
   void _subscribe() {
     if (_channel != null) return;
-    final channel = _client.channel('orders:$_restaurantId');
+    final channel = _client.channel('restaurant:$_restaurantId');
 
     for (final table in const ['orders', 'order_items']) {
       channel.onPostgresChanges(
@@ -210,7 +220,41 @@ class SupabaseBackend implements Backend {
         callback: (_) => unawaited(_pushOrders()),
       );
     }
+    for (final table in const [
+      'categories',
+      'menu_items',
+      'restaurant_tables',
+      'restaurants',
+    ]) {
+      channel.onPostgresChanges(
+        event: PostgresChangeEvent.all,
+        schema: 'public',
+        table: table,
+        callback: (_) => unawaited(_pushEverything()),
+      );
+    }
     _channel = channel..subscribe();
+  }
+
+  /// Realtime filters events through row level security using the identity the
+  /// channel subscribed with. Signing in or out changes that identity, so the
+  /// channel has to be rebuilt — otherwise a cook who has just signed in keeps
+  /// receiving the anonymous view and never sees a new ticket land.
+  Future<void> _resubscribe() async {
+    final channel = _channel;
+    _channel = null;
+    if (channel != null) await _client.removeChannel(channel);
+    _subscribe();
+  }
+
+  /// A menu change invalidates more than the orders, so re-read the lot.
+  Future<void> _pushEverything() async {
+    if (_cache == null || _changes.isClosed) return;
+    try {
+      await _reload();
+    } catch (_) {
+      // A dropped refresh is not worth interrupting service over.
+    }
   }
 
   Future<void> _pushOrders() async {
@@ -261,6 +305,7 @@ class SupabaseBackend implements Backend {
       return null;
     }
     await _reload();
+    await _resubscribe();
     return _currentUser;
   }
 
@@ -272,6 +317,7 @@ class SupabaseBackend implements Backend {
         // again, and the customer app still needs to read the menu.
         await _client.auth.signInAnonymously();
         await _reload();
+        await _resubscribe();
       });
 
   // ----------------------------------------------------------------- orders

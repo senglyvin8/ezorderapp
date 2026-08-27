@@ -197,18 +197,29 @@ create index if not exists order_items_order_idx on public.order_items (order_id
 alter table public.orders replica identity full;
 alter table public.order_items replica identity full;
 
+-- The menu is published too, so a dish the owner adds appears on a diner's
+-- already-open phone rather than waiting for them to reload. Menu edits are
+-- rare, so the cost of carrying them is nothing next to the confusion of a
+-- customer ordering something that was taken off five minutes ago.
+alter table public.categories        replica identity full;
+alter table public.menu_items        replica identity full;
+alter table public.restaurant_tables replica identity full;
+alter table public.restaurants       replica identity full;
+
 do $$
+declare
+  v_table text;
 begin
-  if not exists (
-    select 1 from pg_publication_tables
-    where pubname = 'supabase_realtime' and tablename = 'orders'
-  ) then
-    alter publication supabase_realtime add table public.orders;
-  end if;
-  if not exists (
-    select 1 from pg_publication_tables
-    where pubname = 'supabase_realtime' and tablename = 'order_items'
-  ) then
-    alter publication supabase_realtime add table public.order_items;
-  end if;
+  foreach v_table in array array[
+    'orders', 'order_items',
+    'categories', 'menu_items', 'restaurant_tables', 'restaurants'
+  ] loop
+    if not exists (
+      select 1 from pg_publication_tables
+      where pubname = 'supabase_realtime' and tablename = v_table
+    ) then
+      execute format('alter publication supabase_realtime add table public.%I',
+                     v_table);
+    end if;
+  end loop;
 end $$;

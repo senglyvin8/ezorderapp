@@ -76,6 +76,11 @@ class AppText {
   String get newPassword => _('New password', 'ពាក្យសម្ងាត់ថ្មី');
   String get pinRule => _('6 digits', 'លេខ ៦ តួ');
   String get checking => _('Checking…', 'កំពុងពិនិត្យ…');
+  String get cannotReachRestaurant => _(
+        'Cannot reach the restaurant',
+        'មិនអាចភ្ជាប់ទៅភោជនីយដ្ឋានបានទេ',
+      );
+  String get tryAgain => _('Try again', 'ព្យាយាមម្តងទៀត');
   String get passwordRule =>
       _('At least 8 characters', 'យ៉ាងតិច ៨ តួអក្សរ');
   String get resetPin => _('Reset PIN', 'កំណត់លេខសម្ងាត់ឡើងវិញ');

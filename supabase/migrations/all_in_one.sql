@@ -215,20 +215,31 @@ create index if not exists order_items_order_idx on public.order_items (order_id
 alter table public.orders replica identity full;
 alter table public.order_items replica identity full;
 
+-- The menu is published too, so a dish the owner adds appears on a diner's
+-- already-open phone rather than waiting for them to reload. Menu edits are
+-- rare, so the cost of carrying them is nothing next to the confusion of a
+-- customer ordering something that was taken off five minutes ago.
+alter table public.categories        replica identity full;
+alter table public.menu_items        replica identity full;
+alter table public.restaurant_tables replica identity full;
+alter table public.restaurants       replica identity full;
+
 do $$
+declare
+  v_table text;
 begin
-  if not exists (
-    select 1 from pg_publication_tables
-    where pubname = 'supabase_realtime' and tablename = 'orders'
-  ) then
-    alter publication supabase_realtime add table public.orders;
-  end if;
-  if not exists (
-    select 1 from pg_publication_tables
-    where pubname = 'supabase_realtime' and tablename = 'order_items'
-  ) then
-    alter publication supabase_realtime add table public.order_items;
-  end if;
+  foreach v_table in array array[
+    'orders', 'order_items',
+    'categories', 'menu_items', 'restaurant_tables', 'restaurants'
+  ] loop
+    if not exists (
+      select 1 from pg_publication_tables
+      where pubname = 'supabase_realtime' and tablename = v_table
+    ) then
+      execute format('alter publication supabase_realtime add table public.%I',
+                     v_table);
+    end if;
+  end loop;
 end $$;
 
 -- >>>>>>>>>>>>>>>>>>>>>>  0002_policies.sql  <<<<<<<<<<<<<<<<<<<<<<
@@ -337,17 +348,31 @@ create policy restaurants_admin_update on public.restaurants
   using  (id = public.current_restaurant_id() and public.can_manage_restaurant())
   with check (id = public.current_restaurant_id() and public.can_manage_restaurant());
 
--- An admin editing settings must not be able to rewind the order counter and
--- collide with numbers already issued.
+-- An admin editing settings must not be able to rewind the order counter, or
+-- change the slug that is already printed on every table.
+--
+-- This used to revert next_order_number inside a trigger, which was a bad way
+-- to say it: the trigger fires on *every* update to the row, including
+-- next_order_number()'s own increment, so the counter never advanced. Every
+-- order came out with the same number and the second one ever placed died on
+-- the (restaurant_id, order_number) unique constraint.
+--
+-- Column privileges say it properly. A client simply has no UPDATE right on
+-- next_order_number, so it cannot try; and next_order_number() is SECURITY
+-- DEFINER, so it is unaffected. The trigger is left holding only the slug,
+-- which nothing legitimate ever updates.
+revoke update on public.restaurants from anon, authenticated;
+grant update (
+  name, name_km, logo, phone, address,
+  currency_symbol, currency_code, payment_methods
+) on public.restaurants to authenticated;
+
 create or replace function public.protect_order_counter()
 returns trigger language plpgsql
 set search_path = public, pg_temp
 as $$
 begin
-  if new.next_order_number <> old.next_order_number then
-    new.next_order_number := old.next_order_number;
-  end if;
-  if new.slug <> old.slug then
+  if new.slug is distinct from old.slug then
     raise exception 'A restaurant slug cannot be changed once QR codes are printed';
   end if;
   return new;
@@ -374,10 +399,37 @@ create policy staff_admin_update on public.staff
   using  (restaurant_id = public.current_restaurant_id()
           and public.can_manage_restaurant())
   with check (restaurant_id = public.current_restaurant_id()
-          and public.can_manage_restaurant()
-          -- Moving someone to another restaurant, or promoting them to admin
-          -- by hand, is not an edit — it is a different account.
-          and role = (select role from public.staff s where s.id = staff.id));
+          and public.can_manage_restaurant());
+
+-- Moving someone to another restaurant, or promoting them to admin by hand, is
+-- not an edit — it is a different account. That used to be a `role = (select
+-- role from staff ...)` clause in the policy above, which Postgres refuses:
+-- reading `staff` from inside a policy on `staff` is infinite recursion, and
+-- every rename failed with 42P17. A trigger sees both OLD and NEW without
+-- querying anything, so it says the same thing without the recursion — and it
+-- holds for the SECURITY DEFINER functions too, which policies do not touch.
+create or replace function public.protect_staff_identity()
+returns trigger language plpgsql
+set search_path = public, pg_temp
+as $$
+begin
+  if new.role is distinct from old.role then
+    raise exception
+      'A role cannot be changed — delete the account and create it again';
+  end if;
+  if new.restaurant_id is distinct from old.restaurant_id then
+    raise exception 'An account cannot be moved to another restaurant';
+  end if;
+  if new.id is distinct from old.id then
+    raise exception 'An account id cannot be changed';
+  end if;
+  return new;
+end $$;
+
+drop trigger if exists staff_protect_identity on public.staff;
+create trigger staff_protect_identity
+  before update on public.staff
+  for each row execute function public.protect_staff_identity();
 
 -- --------------------------------------------------- menu, categories, tables
 

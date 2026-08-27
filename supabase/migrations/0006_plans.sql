@@ -47,14 +47,19 @@ returns table (max_tables integer, max_staff integer)
 language sql immutable
 set search_path = public, pg_temp
 as $$
-  select * from (values
-    ('FREE',   5,    2),
-    ('BASIC',  20,   5),
-    -- NULL is unlimited. Not a big number: a cap of 999 is one somebody
-    -- eventually hits and cannot explain.
-    ('PRO',    null, 10)
-  ) as t(plan, max_tables, max_staff)
-  where t.plan = p_plan
+  -- Naming the columns, not `select *`: the values list carries three columns
+  -- and this function returns two, so a star would hand back `plan` where
+  -- max_tables belongs and fail with a return type mismatch.
+  select t.max_tables, t.max_staff
+    from (values
+      ('FREE',   5,             2),
+      ('BASIC',  20,            5),
+      -- NULL is unlimited. Not a big number: a cap of 999 is one somebody
+      -- eventually hits and cannot explain. Cast, so the column is typed
+      -- integer rather than left unknown.
+      ('PRO',    null::integer, 10)
+    ) as t(plan, max_tables, max_staff)
+   where t.plan = p_plan
 $$;
 
 grant execute on function public.plan_limits(text) to anon, authenticated;

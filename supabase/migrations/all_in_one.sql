@@ -34,7 +34,11 @@
 --  0002_policies.sql.
 -- ============================================================================
 
-create extension if not exists pgcrypto;
+-- Supabase ships pgcrypto in the `extensions` schema and this is normally a
+-- no-op. It is spelled out so a bare Postgres puts crypt() and gen_salt()
+-- where the account functions in 0004 expect to find them.
+create schema if not exists extensions;
+create extension if not exists pgcrypto with schema extensions;
 
 -- ---------------------------------------------------------------- restaurants
 
@@ -847,7 +851,10 @@ create or replace function public.create_auth_user(
 returns uuid
 language plpgsql
 security definer
-set search_path = public, auth, pg_temp
+-- `extensions` is on the path because that is where Supabase installs
+-- pgcrypto: crypt() and gen_salt() are not in `public` and will not be found
+-- without it.
+set search_path = public, extensions, auth, pg_temp
 as $$
 declare
   v_id  uuid := gen_random_uuid();
@@ -1009,7 +1016,8 @@ create or replace function public.reset_staff_secret(
   p_secret   text
 )
 returns void language plpgsql security definer
-set search_path = public, auth, pg_temp
+-- See create_auth_user: pgcrypto lives in `extensions`.
+set search_path = public, extensions, auth, pg_temp
 as $$
 begin
   if not public.can_manage_restaurant() then

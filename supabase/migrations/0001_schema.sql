@@ -16,7 +16,11 @@
 --  0002_policies.sql.
 -- ============================================================================
 
-create extension if not exists pgcrypto;
+-- Supabase ships pgcrypto in the `extensions` schema and this is normally a
+-- no-op. It is spelled out so a bare Postgres puts crypt() and gen_salt()
+-- where the account functions in 0004 expect to find them.
+create schema if not exists extensions;
+create extension if not exists pgcrypto with schema extensions;
 
 -- ---------------------------------------------------------------- restaurants
 

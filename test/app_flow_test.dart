@@ -87,7 +87,7 @@ void main() {
             reason: 'customer screen threw in ${language.name}');
 
         for (final role in StaffRole.values) {
-          store.signOut();
+          await store.signOut();
           await signIn(tester, store, role);
           expect(tester.takeException(), isNull,
               reason: '${role.name} workspace threw in ${language.name}');
@@ -225,7 +225,7 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text(store.text.viewOrder), findsOneWidget);
 
-      store.submitOrder();
+      await store.submitOrder();
       await tester.pumpAndSettle();
       expect(find.text(store.text.viewOrder), findsNothing);
     });
@@ -384,7 +384,7 @@ void main() {
       final store = await pumpApp(tester, size: const Size(500, 900));
       store.startTakeaway();
       store.addToCart(store.menuItem('food-01')!);
-      final order = store.submitOrder();
+      final order = await store.submitOrder();
 
       await signIn(tester, store, StaffRole.kitchen);
       await tester.pumpAndSettle();
@@ -425,7 +425,7 @@ void main() {
         expect(tester.takeException(), isNull, reason: 'cart');
 
         for (final role in StaffRole.values) {
-          store.signOut();
+          await store.signOut();
           await signIn(tester, store, role);
           expect(tester.takeException(), isNull,
               reason: '${role.name} at 1.3x in ${language.name}');
@@ -580,8 +580,8 @@ void main() {
       final order = await placeOrder(store);
 
       await signIn(tester, store, StaffRole.admin);
-      store.startCooking(order.id);
-      store.signOut();
+      await store.startCooking(order.id);
+      await store.signOut();
       await signIn(tester, store, StaffRole.cashier);
       await tester.pumpAndSettle();
 
@@ -596,7 +596,7 @@ void main() {
       store.openTable(store.tableByNumber('10')!.id);
       store.addToCart(store.menuItem('food-01')!, quantity: 2);
       store.addToCart(store.menuItem('food-06')!);
-      final order = store.submitOrder();
+      final order = await store.submitOrder();
       final drink = order.items.last;
 
       await signIn(tester, store, StaffRole.cashier);
@@ -628,11 +628,11 @@ void main() {
       final t = store.text;
       store.openTable(store.tableByNumber('10')!.id);
       store.addToCart(store.menuItem('food-01')!);
-      final order = store.submitOrder();
+      final order = await store.submitOrder();
 
       await signIn(tester, store, StaffRole.admin);
-      store.startCooking(order.id);
-      store.signOut();
+      await store.startCooking(order.id);
+      await store.signOut();
       await signIn(tester, store, StaffRole.cashier);
       await tester.pumpAndSettle();
 

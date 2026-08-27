@@ -86,7 +86,7 @@ class _CartScreenState extends State<CartScreen> {
   Future<void> _submit(AppStore store) async {
     store.setCartNote(_orderNote.text);
     try {
-      final order = store.submitOrder();
+      final order = await store.submitOrder();
       if (!mounted) return;
       _orderNote.clear();
       final result = await Navigator.of(context).push<String>(

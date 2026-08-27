@@ -72,9 +72,15 @@ class AdminTablesScreen extends StatelessWidget {
       ),
       floatingActionButton: FloatingActionButton.extended(
         heroTag: 'admin-tables-fab',
-        onPressed: () {
-          final table = store.addTable();
-          showToast(context, t.tableAdded(table.name));
+        onPressed: () async {
+          try {
+            final table = await store.addTable();
+            if (context.mounted) showToast(context, t.tableAdded(table.name));
+          } on StateError catch (error) {
+            if (context.mounted) {
+              showToast(context, error.message, error: true);
+            }
+          }
         },
         backgroundColor: AppColors.brand,
         foregroundColor: Colors.white,

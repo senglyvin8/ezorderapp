@@ -114,7 +114,7 @@ class _NewOrderScreenState extends State<NewOrderScreen> {
   Future<void> _submit(AppStore store) async {
     final t = store.text;
     try {
-      final order = store.placeStaffOrder(
+      final order = await store.placeStaffOrder(
         type: _type,
         tableId: _tableId,
         lines: _lines,

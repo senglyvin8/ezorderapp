@@ -187,20 +187,69 @@ Staff PINs are exactly six digits, and the pad signs in on the sixth — there i
 no confirm tap. Hashing is deliberately slow, so sign-in is async and the pad
 shows a brief *Checking…* rather than freezing a frame.
 
-PINs and passwords are stored as iterated HMAC-SHA256 over a per-account salt,
-never in the clear, and compared in constant time. That is the right shape but
-not a substitute for a server: anything on the device can be edited by someone
-with access to the device.
+On the device backend, PINs and passwords are stored as iterated HMAC-SHA256
+over a per-account salt, never in the clear, and compared in constant time.
+That is the right shape but not a substitute for a server: anything on the
+device can be edited by someone with access to the device — which is precisely
+why section 5 exists. Connected to Supabase the secrets are Auth's, and this
+device never sees them at all.
 
-**Permissions are enforced in `AppStore`, not just in the UI.** Every staff
-mutation runs through a `_require` guard, so hiding a button is not the thing
-keeping a cashier out of the menu editor — `test/app_store_test.dart` asserts
+**Permissions are enforced below the UI, not just in it.** Hiding a button is
+never the thing keeping a cashier out of the menu editor. On the device backend
+every staff mutation runs through a `_require` guard; connected to Supabase the
+same refusals come from Postgres, where a patched client cannot reach them — `test/app_store_test.dart` asserts
 that a cashier cannot cook, a kitchen account cannot take money, neither can
 touch the menu, and a signed-out visitor can still order as a customer. The
 last active admin cannot be deleted or disabled, because with no server there
 would be no way back in.
 
-## 5. Beyond the original brief
+## 5. Where the data lives
+
+Out of the box everything is on the device: a seeded demo restaurant in
+SharedPreferences. That is what the test suite runs against, and what you get
+with no configuration at all.
+
+Point it at a Supabase project and it becomes a product instead — one database
+behind every device, so the kitchen tablet, the till and the diner's phone are
+three views of one restaurant rather than three unrelated apps. One project
+holds many restaurants; each build says which one it serves.
+
+```sh
+flutter run \
+  --dart-define=SUPABASE_URL=https://xxxx.supabase.co \
+  --dart-define=SUPABASE_ANON_KEY=eyJhbGciOi... \
+  --dart-define=RESTAURANT_SLUG=demo
+```
+
+**`supabase/README.md` is the setup guide** — create the project, run four
+migrations, enable anonymous sign-in, provision your restaurant. Ten minutes.
+
+The seam is `lib/data/backend/`: an abstract `Backend` with two
+implementations, `LocalBackend` (the device) and `SupabaseBackend` (Postgres).
+`AppStore` keeps the split that makes this work — the *restaurant* (menu,
+tables, orders, staff) belongs to the backend and may change under you at any
+moment; the *session* (which table this phone scanned, what is in this cart,
+which language) belongs to the device and never leaves it.
+
+Two things change when you connect:
+
+**The rules become the database's.** Every mutation is a `SECURITY DEFINER`
+function that checks the caller's role and the order's state in SQL first.
+There is no INSERT or UPDATE policy on `orders` at all. A patched build of this
+app cannot talk its way past Rule 6, Rule 7, or cancel-only-while-queued — and
+`place_order` reads prices from the menu rather than trusting the client, so it
+cannot invent a cheap dish either.
+
+**Somebody else is writing too.** Realtime keeps every device on the same
+orders. The live sync that used to work only because everything was one phone
+now works across the room.
+
+The sign-in screen says which mode you are in: demo logins, or
+**Connected · &lt;slug&gt;**.
+
+---
+
+## 6. Beyond the original brief
 
 **Khmer / English — including the menu itself.** The language control sits
 beside the role tabs, reachable from every screen in every role, and the choice
@@ -297,7 +346,7 @@ Rule 6 is unchanged underneath: NEW → COOKING → READY, no step skipped.
 
 ---
 
-## 6. How it is put together
+## 7. How it is put together
 
 ```
 lib/
@@ -313,6 +362,10 @@ lib/
 ├── data/
 │   ├── demo_data.dart         ABC Restaurant seed: menu, 10 tables, 12 orders
 │   └── app_store.dart         the single source of truth (ChangeNotifier)
+├── data/backend/              where the restaurant's data lives
+│   ├── backend.dart           the seam: one interface, two implementations
+│   ├── local_backend.dart     on this device — the demo, and what tests run
+│   └── supabase_backend.dart  Postgres, RLS, RPCs and realtime
 ├── theme/app_theme.dart       palette, status colours, control styling
 ├── widgets/                   shared chrome, order ticket, tracker, stepper,
 │                              photo picker…
@@ -346,7 +399,7 @@ across devices needs a server; nothing else here has to change.
 
 ---
 
-## 7. Where each business rule lives
+## 8. Where each business rule lives
 
 | Rule | Enforced in |
 | --- | --- |
@@ -372,7 +425,7 @@ across devices needs a server; nothing else here has to change.
 
 ---
 
-## 8. Design system
+## 9. Design system
 
 Type is **Kantumruy Pro** — one Google font, bundled as a single 200 KB
 variable file, drawn for Khmer and Latin together. A Khmer dish name and an
@@ -403,7 +456,7 @@ DESIGN_SHOTS=1 flutter test --update-goldens test/design
 They are review images, not pixel assertions, and are skipped by a normal
 `flutter test`.
 
-## 9. Notes on the artwork
+## 10. Notes on the artwork
 
 Dish images are generated flat-vector illustrations in `assets/food/`, produced
 by `tool/generate_food_images.py` (Pillow). They are bundled, so the app needs
@@ -415,8 +468,16 @@ The demo dishes ship with English names only. Add a Khmer name to any dish in
 the editor to see the Khmer menu fill in — the field is right under the English
 one.
 
-## 10. Deliberately not built
+## 11. Deliberately not built
 
 Inventory, payroll, accounting, loyalty, delivery, reservations, advanced
-analytics, multi-branch, real authentication and payment gateways — all out of
-scope per the brief.
+analytics and payment gateways — all out of scope per the brief.
+
+Two things that *were* out of scope have since been built, and the brief's line
+about them no longer holds: **real authentication** (staff are Supabase Auth
+users, with roles enforced by row level security) and **multi-branch** (one
+Supabase project holds many restaurants, each with its own slug, staff and
+orders). See section 5.
+
+Payments are still recorded, not taken: the cashier picks a method and the
+order moves to PAID. Nothing talks to Bakong, a card terminal or KHQR.

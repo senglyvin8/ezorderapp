@@ -1,4 +1,4 @@
-import '../config/app_config.dart';
+import '../config/backend_config.dart';
 
 /// A physical table. Rule 2 — every table carries a unique QR identifier.
 class RestaurantTable {
@@ -18,17 +18,19 @@ class RestaurantTable {
   final String name;
 
   /// Unique QR identifier, e.g. `restaurant-demo-table-05`, where `demo` is
-  /// [Brand.slug].
+  /// the restaurant's slug.
   final String qrId;
 
   /// The path the QR code encodes, e.g. `/order/demo/table/05`.
-  String get deepLinkPath => '/order/${Brand.slug}/table/$number';
+  String get deepLinkPath => '/order/${BackendConfig.slug}/table/$number';
 
-  /// The QR identifier a table with [number] should carry. One place, so
-  /// changing [Brand.slug] moves the seed tables, tables added later and the
-  /// scanner together.
+  /// The QR identifier a table with [number] should carry.
+  ///
+  /// One place, so the seed tables, tables added later and the scanner all
+  /// move together. The slug is part of it because one Supabase project holds
+  /// many restaurants, and every one of them has a table 01.
   static String qrIdFor(String number) =>
-      'restaurant-${Brand.slug}-table-$number';
+      'restaurant-${BackendConfig.slug}-table-$number';
 
   RestaurantTable copyWith({String? number, String? name, String? qrId}) =>
       RestaurantTable(

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../config/backend_config.dart';
 import '../../data/app_store.dart';
 import '../../data/demo_data.dart';
 import '../../l10n/app_text.dart';
@@ -144,7 +145,12 @@ class _SignInScreenState extends State<SignInScreen> {
                 }),
               ),
             const SizedBox(height: 26),
-            _DemoCredentials(t: t),
+            // Which of the two this build is, and — when it is the demo by
+            // accident — exactly which define was left out.
+            if (store.isDemo)
+              _DemoCredentials(t: t)
+            else
+              const _ConnectedTo(slug: BackendConfig.restaurantSlug),
           ],
         ),
       ),
@@ -462,6 +468,39 @@ class _AdminForm extends StatelessWidget {
           child: Text(busy ? t.checking : t.signIn),
         ),
       ],
+    );
+  }
+}
+
+/// Shown instead of the demo logins once the app is talking to a real
+/// database, so nobody wonders why `admin / admin1234` stopped working.
+class _ConnectedTo extends StatelessWidget {
+  const _ConnectedTo({required this.slug});
+
+  final String slug;
+
+  @override
+  Widget build(BuildContext context) {
+    return AppCard(
+      color: AppColors.surface,
+      elevated: false,
+      child: Row(
+        children: [
+          const Icon(Icons.cloud_done_rounded,
+              size: 17, color: AppColors.statusReady),
+          const SizedBox(width: 7),
+          Expanded(
+            child: Text(
+              'Connected · $slug',
+              style: const TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: AppColors.inkSoft,
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

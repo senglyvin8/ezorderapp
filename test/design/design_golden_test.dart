@@ -130,12 +130,12 @@ void main() {
     final store = await pump(tester);
     store.openTable(store.tableByNumber('05')!.id);
     store.addToCart(store.menuItem('food-01')!);
-    final order = store.submitOrder();
+    final order = await store.submitOrder();
 
     // The kitchen has to be signed in to move the order along.
     await signIn(tester, store, StaffRole.kitchen);
-    store.startCooking(order.id);
-    store.signOut();
+    await store.startCooking(order.id);
+    await store.signOut();
 
     await tester.pumpAndSettle();
     await tester.tap(find.text(store.text.myOrderTab));
@@ -175,13 +175,13 @@ void main() {
     store.openTable(store.tableByNumber('10')!.id);
     store.addToCart(store.menuItem('food-01')!, quantity: 2);
     store.addToCart(store.menuItem('food-06')!, note: 'Less ice');
-    final order = store.submitOrder();
+    final order = await store.submitOrder();
 
     // A second order after it, so the ticket being edited is not the last card
     // on the board: scrolling to the bottom would otherwise leave its buttons
     // underneath the New order FAB, which then swallows the tap.
     store.addToCart(store.menuItem('food-02')!);
-    final below = store.submitOrder();
+    final below = await store.submitOrder();
 
     await signIn(tester, store, StaffRole.cashier);
     await tester.pumpAndSettle();
@@ -229,7 +229,7 @@ void main() {
   testWidgets(skip: !_enabled, 'admin menu management', (tester) async {
     final store = await pump(tester);
     await signIn(tester, store, StaffRole.admin);
-    store.updateMenuItem(store.menuItem('food-02')!.copyWith(
+    await store.updateMenuItem(store.menuItem('food-02')!.copyWith(
       discountPercent: 20,
       signature: true,
     ));
@@ -286,7 +286,7 @@ void main() {
     final store = await pump(tester, size: const Size(900, 760));
     store.startTakeaway();
     store.addToCart(store.menuItem('food-01')!, quantity: 2);
-    store.submitOrder();
+    await store.submitOrder();
     await signIn(tester, store, StaffRole.kitchen);
     await tester.pumpAndSettle();
     await shoot(tester, '13-kitchen-takeaway');

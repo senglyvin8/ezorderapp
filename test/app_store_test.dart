@@ -24,33 +24,33 @@ void main() {
     await store.signInWithPassword(DemoData.adminUsername, DemoData.adminPassword);
   });
 
-  test('Rule 3 & 11 — an order always carries the scanned table', () {
+  test('Rule 3 & 11 — an order always carries the scanned table', () async {
     final table = store.tableByNumber('05')!;
     store.openTable(table.id);
     store.addToCart(store.menuItem('food-01')!);
 
-    final order = store.submitOrder();
+    final order = await store.submitOrder();
 
     expect(order.tableId, table.id);
     expect(order.tableNumber, '05');
   });
 
-  test('Rule 11 — submitting without a table is refused', () {
+  test('Rule 11 — submitting without a table is refused', () async {
     store.addToCart(store.menuItem('food-01')!);
-    expect(store.submitOrder, throwsStateError);
+    await expectLater(store.submitOrder(), throwsStateError);
   });
 
-  test('an empty cart cannot be submitted', () {
+  test('an empty cart cannot be submitted', () async {
     store.openTable(store.tableByNumber('01')!.id);
-    expect(store.submitOrder, throwsStateError);
+    await expectLater(store.submitOrder(), throwsStateError);
   });
 
-  test('Rule 12 — order numbers are unique and increase', () {
+  test('Rule 12 — order numbers are unique and increase', () async {
     store.openTable(store.tableByNumber('01')!.id);
     store.addToCart(store.menuItem('food-01')!);
-    final first = store.submitOrder();
+    final first = await store.submitOrder();
     store.addToCart(store.menuItem('food-02')!);
-    final second = store.submitOrder();
+    final second = await store.submitOrder();
 
     expect(first.orderNumber, isNot(second.orderNumber));
     expect(int.parse(second.orderNumber), int.parse(first.orderNumber) + 1);
@@ -60,9 +60,9 @@ void main() {
     );
   });
 
-  test('Rule 9 — a sold out dish cannot be added to the cart', () {
+  test('Rule 9 — a sold out dish cannot be added to the cart', () async {
     store.openTable(store.tableByNumber('01')!.id);
-    store.setItemAvailability('food-01', false);
+    await store.setItemAvailability('food-01', false);
 
     expect(
       () => store.addToCart(store.menuItem('food-01')!),
@@ -70,19 +70,19 @@ void main() {
     );
   });
 
-  test('Rule 5 — notes survive from the cart onto the order', () {
+  test('Rule 5 — notes survive from the cart onto the order', () async {
     store.openTable(store.tableByNumber('02')!.id);
     store.addToCart(store.menuItem('food-01')!, quantity: 2, note: 'No onion');
     store.setCartNote('We are in a hurry');
 
-    final order = store.submitOrder();
+    final order = await store.submitOrder();
 
     expect(order.items.single.note, 'No onion');
     expect(order.items.single.quantity, 2);
     expect(order.customerNote, 'We are in a hurry');
   });
 
-  test('identical dishes merge only when the note matches', () {
+  test('identical dishes merge only when the note matches', () async {
     store.openTable(store.tableByNumber('02')!.id);
     final item = store.menuItem('food-01')!;
     store.addToCart(item, note: 'No onion');
@@ -93,77 +93,77 @@ void main() {
     expect(store.cartItemCount, 3);
   });
 
-  test('Rule 8 — the cart is emptied once the order is submitted', () {
+  test('Rule 8 — the cart is emptied once the order is submitted', () async {
     store.openTable(store.tableByNumber('03')!.id);
     store.addToCart(store.menuItem('food-01')!);
-    store.submitOrder();
+    await store.submitOrder();
 
     expect(store.cart, isEmpty);
     expect(store.cartNote, isEmpty);
   });
 
-  test('Rule 6 — the kitchen may only walk NEW -> COOKING -> READY', () {
+  test('Rule 6 — the kitchen may only walk NEW -> COOKING -> READY', () async {
     store.openTable(store.tableByNumber('04')!.id);
     store.addToCart(store.menuItem('food-01')!);
-    final order = store.submitOrder();
+    final order = await store.submitOrder();
 
-    expect(() => store.markReady(order.id), throwsStateError);
+    await expectLater(store.markReady(order.id), throwsStateError);
 
-    store.startCooking(order.id);
+    await store.startCooking(order.id);
     expect(store.order(order.id)!.status, OrderStatus.cooking);
-    expect(() => store.startCooking(order.id), throwsStateError);
+    await expectLater(store.startCooking(order.id), throwsStateError);
 
-    store.markReady(order.id);
+    await store.markReady(order.id);
     expect(store.order(order.id)!.status, OrderStatus.ready);
   });
 
-  test('Rule 7 & 10 — the cashier settles READY -> PAID -> COMPLETED', () {
+  test('Rule 7 & 10 — the cashier settles READY -> PAID -> COMPLETED', () async {
     store.openTable(store.tableByNumber('05')!.id);
     store.addToCart(store.menuItem('food-06')!);
-    final order = store.submitOrder();
+    final order = await store.submitOrder();
 
-    expect(() => store.collectPayment(order.id, 'Cash'), throwsStateError);
+    await expectLater(store.collectPayment(order.id, 'Cash'), throwsStateError);
 
-    store.startCooking(order.id);
-    store.markReady(order.id);
-    store.collectPayment(order.id, 'KHQR');
+    await store.startCooking(order.id);
+    await store.markReady(order.id);
+    await store.collectPayment(order.id, 'KHQR');
 
     final paid = store.order(order.id)!;
     expect(paid.status, OrderStatus.paid);
     expect(paid.paymentMethod, 'KHQR');
     expect(paid.paidAt, isNotNull);
 
-    store.completeOrder(order.id);
+    await store.completeOrder(order.id);
     expect(store.order(order.id)!.status, OrderStatus.completed);
   });
 
-  test('a table is occupied while any of its orders is still open', () {
+  test('a table is occupied while any of its orders is still open', () async {
     final table = store.tableByNumber('04')!;
     store.openTable(table.id);
     store.addToCart(store.menuItem('food-01')!);
-    final order = store.submitOrder();
+    final order = await store.submitOrder();
 
     expect(store.isTableOccupied(table.id), isTrue);
-    expect(() => store.deleteTable(table.id), throwsStateError);
+    await expectLater(store.deleteTable(table.id), throwsStateError);
 
-    store.startCooking(order.id);
-    store.markReady(order.id);
-    store.collectPayment(order.id, 'Cash');
-    store.completeOrder(order.id);
+    await store.startCooking(order.id);
+    await store.markReady(order.id);
+    await store.collectPayment(order.id, 'Cash');
+    await store.completeOrder(order.id);
 
     expect(store.isTableOccupied(table.id), isFalse);
   });
 
-  test('Rule 2 — every table has a unique QR identifier', () {
+  test('Rule 2 — every table has a unique QR identifier', () async {
     final ids = store.tables.map((t) => t.qrId).toList();
     expect(ids.toSet().length, ids.length);
 
-    final added = store.addTable();
+    final added = await store.addTable();
     expect(store.tables.map((t) => t.qrId).toSet().length, ids.length + 1);
     expect(added.qrId, 'restaurant-demo-table-${added.number}');
   });
 
-  test('a scanned payload resolves to its table', () {
+  test('a scanned payload resolves to its table', () async {
     expect(store.resolveScannedValue('restaurant-demo-table-05')?.number, '05');
     expect(store.resolveScannedValue('/order/demo/table/05')?.number, '05');
     expect(
@@ -173,27 +173,27 @@ void main() {
     expect(store.resolveScannedValue('something-else'), isNull);
   });
 
-  test('deleting a category takes its dishes with it', () {
+  test('deleting a category takes its dishes with it', () async {
     final before = store.menuItems.length;
     final count = store.itemCountInCategory('cat-drinks');
-    store.deleteCategory('cat-drinks');
+    await store.deleteCategory('cat-drinks');
 
     expect(store.menuItems.length, before - count);
     expect(store.itemsInCategory('cat-drinks'), isEmpty);
   });
 
-  test("today's summary counts revenue from settled orders only", () {
+  test("today's summary counts revenue from settled orders only", () async {
     final before = store.todaySummary;
     store.openTable(store.tableByNumber('06')!.id);
     store.addToCart(store.menuItem('food-02')!); // $4.00
-    final order = store.submitOrder();
+    final order = await store.submitOrder();
 
     expect(store.todaySummary.orders, before.orders + 1);
     expect(store.todaySummary.revenue, before.revenue);
 
-    store.startCooking(order.id);
-    store.markReady(order.id);
-    store.collectPayment(order.id, 'Cash');
+    await store.startCooking(order.id);
+    await store.markReady(order.id);
+    await store.collectPayment(order.id, 'Cash');
 
     expect(store.todaySummary.revenue, closeTo(before.revenue + 4.00, 0.001));
   });
@@ -201,7 +201,7 @@ void main() {
   test('state survives a reload', () async {
     store.openTable(store.tableByNumber('07')!.id);
     store.addToCart(store.menuItem('food-01')!, note: 'No onion');
-    final order = store.submitOrder();
+    final order = await store.submitOrder();
 
     await Future<void>.delayed(Duration.zero);
 
@@ -214,8 +214,8 @@ void main() {
   });
 
   group('discounts', () {
-    test('the discounted price is what reaches the order', () {
-      store.updateMenuItem(store.menuItem('food-01')!.copyWith(
+    test('the discounted price is what reaches the order', () async {
+      await store.updateMenuItem(store.menuItem('food-01')!.copyWith(
         price: 3.50,
         discountPercent: 20,
       ));
@@ -226,29 +226,29 @@ void main() {
       store.addToCart(item, quantity: 2);
       expect(store.cartTotal, closeTo(5.60, 0.001));
 
-      final order = store.submitOrder();
+      final order = await store.submitOrder();
       expect(order.items.single.price, 2.80);
       expect(order.total, closeTo(5.60, 0.001));
     });
 
-    test('a price change after ordering does not alter a placed order', () {
+    test('a price change after ordering does not alter a placed order', () async {
       store.openTable(store.tableByNumber('01')!.id);
       store.addToCart(store.menuItem('food-01')!);
-      final order = store.submitOrder();
+      final order = await store.submitOrder();
       final charged = order.items.single.price;
 
-      store.updateMenuItem(
+      await store.updateMenuItem(
         store.menuItem('food-01')!.copyWith(discountPercent: 50),
       );
 
       expect(store.order(order.id)!.items.single.price, charged);
     });
 
-    test('the same dish at two prices stays on separate cart lines', () {
+    test('the same dish at two prices stays on separate cart lines', () async {
       store.openTable(store.tableByNumber('01')!.id);
       final item = store.menuItem('food-01')!;
       store.addToCart(item);
-      store.updateMenuItem(item.copyWith(discountPercent: 30));
+      await store.updateMenuItem(item.copyWith(discountPercent: 30));
       store.addToCart(store.menuItem('food-01')!);
 
       expect(store.cart.length, 2);
@@ -256,7 +256,7 @@ void main() {
   });
 
   group('language', () {
-    test('the demo menu is fully bilingual', () {
+    test('the demo menu is fully bilingual', () async {
       expect(store.untranslatedItemCount, 0,
           reason: 'every seeded dish should ship with a Khmer name');
       expect(store.untranslatedCategoryCount, 0,
@@ -271,8 +271,8 @@ void main() {
       }
     });
 
-    test('a dish with no Khmer name falls back to the English one', () {
-      store.addMenuItem(
+    test('a dish with no Khmer name falls back to the English one', () async {
+      await store.addMenuItem(
         name: 'Fish Amok',
         description: 'Steamed fish curry.',
         price: 5.50,
@@ -285,12 +285,12 @@ void main() {
       expect(added.displayDescription(AppLanguage.km), 'Steamed fish curry.');
       expect(store.untranslatedItemCount, 1);
 
-      store.updateMenuItem(added.copyWith(nameKm: 'អាម៉ុកត្រី'));
+      await store.updateMenuItem(added.copyWith(nameKm: 'អាម៉ុកត្រី'));
       expect(store.menuItems.last.displayName(AppLanguage.km), 'អាម៉ុកត្រី');
       expect(store.untranslatedItemCount, 0);
     });
 
-    test('the restaurant name follows the selected language', () {
+    test('the restaurant name follows the selected language', () async {
       // The app opens in Khmer — see Brand.defaultLanguage.
       expect(store.language, AppLanguage.km);
       expect(store.restaurantDisplayName, 'ភោជនីយដ្ឋាន ABC');
@@ -302,17 +302,17 @@ void main() {
       expect(store.restaurantDisplayName, 'ភោជនីយដ្ឋាន ABC');
 
       // A blank Khmer name falls back to the English one.
-      store.updateSettings(store.settings.copyWith(nameKm: ''));
+      await store.updateSettings(store.settings.copyWith(nameKm: ''));
       expect(store.restaurantDisplayName, 'ABC Restaurant');
     });
 
-    test('the Khmer name travels with the order', () {
-      store.updateMenuItem(
+    test('the Khmer name travels with the order', () async {
+      await store.updateMenuItem(
         store.menuItem('food-01')!.copyWith(nameKm: 'បាយឆា'),
       );
       store.openTable(store.tableByNumber('01')!.id);
       store.addToCart(store.menuItem('food-01')!);
-      final order = store.submitOrder();
+      final order = await store.submitOrder();
 
       expect(order.items.single.displayName(AppLanguage.km), 'បាយឆា');
     });
@@ -327,7 +327,7 @@ void main() {
       expect(reloaded.language, AppLanguage.km);
     });
 
-    test('every status has a Khmer label', () {
+    test('every status has a Khmer label', () async {
       store.setLanguage(AppLanguage.km);
       final t = store.text;
       for (final label in [
@@ -345,10 +345,10 @@ void main() {
   });
 
   group('kitchen board', () {
-    test('an order stays in the New column while it is being cooked', () {
+    test('an order stays in the New column while it is being cooked', () async {
       store.openTable(store.tableByNumber('01')!.id);
       store.addToCart(store.menuItem('food-01')!);
-      final order = store.submitOrder();
+      final order = await store.submitOrder();
 
       List<String> working() => [
             ...store.ordersWithStatus(OrderStatus.newOrder),
@@ -357,14 +357,14 @@ void main() {
 
       expect(working(), contains(order.id));
 
-      store.startCooking(order.id);
+      await store.startCooking(order.id);
       expect(working(), contains(order.id));
       expect(
         store.ordersWithStatus(OrderStatus.ready).map((o) => o.id),
         isNot(contains(order.id)),
       );
 
-      store.markReady(order.id);
+      await store.markReady(order.id);
       expect(working(), isNot(contains(order.id)));
       expect(
         store.ordersWithStatus(OrderStatus.ready).map((o) => o.id),
@@ -373,13 +373,13 @@ void main() {
     });
   });
 
-  test('a signature dish keeps its star through an edit', () {
-    store.updateMenuItem(
+  test('a signature dish keeps its star through an edit', () async {
+    await store.updateMenuItem(
       store.menuItem('food-03')!.copyWith(signature: true),
     );
     expect(store.menuItem('food-03')!.signature, isTrue);
 
-    store.updateMenuItem(
+    await store.updateMenuItem(
       store.menuItem('food-03')!.copyWith(price: 4.25),
     );
     expect(store.menuItem('food-03')!.signature, isTrue);
@@ -387,24 +387,24 @@ void main() {
 
   test('an uploaded photo survives a reload and can be removed', () async {
     const fakePhoto = 'aGVsbG8gd29ybGQ=';
-    store.updateMenuItem(store.menuItem('food-02')!.copyWith(photo: fakePhoto));
+    await store.updateMenuItem(store.menuItem('food-02')!.copyWith(photo: fakePhoto));
     await Future<void>.delayed(Duration.zero);
 
     final reloaded = AppStore();
     await reloaded.load();
     expect(reloaded.menuItem('food-02')!.photo, fakePhoto);
 
-    reloaded.updateMenuItem(
+    await reloaded.updateMenuItem(
       reloaded.menuItem('food-02')!.copyWith(clearPhoto: true),
     );
     expect(reloaded.menuItem('food-02')!.photo, isNull);
   });
 
-  test('a new category can be created and used immediately', () {
-    final created = store.addCategory('Soups', nameKm: 'ស៊ុប');
+  test('a new category can be created and used immediately', () async {
+    final created = await store.addCategory('Soups', nameKm: 'ស៊ុប');
     expect(store.sortedCategories.map((c) => c.id), contains(created.id));
 
-    store.addMenuItem(
+    await store.addMenuItem(
       name: 'Chicken Soup',
       description: 'Clear broth.',
       price: 2.75,
@@ -416,13 +416,13 @@ void main() {
   });
 
   group('takeaway', () {
-    test('a takeaway order carries no table and is not tied to one', () {
+    test('a takeaway order carries no table and is not tied to one', () async {
       store.startTakeaway();
       expect(store.hasCustomerSession, isTrue);
       expect(store.activeTable, isNull);
 
       store.addToCart(store.menuItem('food-01')!);
-      final order = store.submitOrder();
+      final order = await store.submitOrder();
 
       expect(order.isTakeaway, isTrue);
       expect(order.tableId, isNull);
@@ -430,26 +430,26 @@ void main() {
       expect(order.orderNumber, isNotEmpty);
     });
 
-    test('a takeaway order never marks a table occupied', () {
+    test('a takeaway order never marks a table occupied', () async {
       final table = store.tableByNumber('01')!;
       store.startTakeaway();
       store.addToCart(store.menuItem('food-01')!);
-      store.submitOrder();
+      await store.submitOrder();
 
       expect(store.isTableOccupied(table.id), isFalse);
     });
 
-    test('dine in is the default and still records the table', () {
+    test('dine in is the default and still records the table', () async {
       expect(store.orderType, OrderType.dineIn);
       store.openTable(store.tableByNumber('05')!.id);
       store.addToCart(store.menuItem('food-01')!);
 
-      final order = store.submitOrder();
+      final order = await store.submitOrder();
       expect(order.isTakeaway, isFalse);
       expect(order.tableNumber, '05');
     });
 
-    test('switching to dine in without a table is refused', () {
+    test('switching to dine in without a table is refused', () async {
       store.startTakeaway();
       expect(() => store.setOrderType(OrderType.dineIn), throwsStateError);
 
@@ -485,17 +485,17 @@ void main() {
     }
 
     /// Puts an order into READY without using the role under test.
-    String readyOrder() {
+    Future<String> readyOrder() async {
       store.openTable(store.tableByNumber('05')!.id);
       store.addToCart(store.menuItem('food-01')!);
-      final order = store.submitOrder();
-      store.startCooking(order.id);
-      store.markReady(order.id);
+      final order = await store.submitOrder();
+      await store.startCooking(order.id);
+      await store.markReady(order.id);
       return order.id;
     }
 
     test('a wrong PIN does not sign anyone in', () async {
-      store.signOut();
+      await store.signOut();
       final account =
           store.accounts.firstWhere((a) => a.role == StaffRole.kitchen);
       expect(await store.signInWithPin(account.id, '999999'), isFalse);
@@ -503,7 +503,7 @@ void main() {
     });
 
     test('a wrong password does not sign anyone in', () async {
-      store.signOut();
+      await store.signOut();
       expect(await store.signInWithPassword('admin', 'wrong-password'), isFalse);
       expect(await store.signInWithPassword('nobody', 'admin1234'), isFalse);
       expect(store.isSignedIn, isFalse);
@@ -512,111 +512,109 @@ void main() {
     test('a disabled account cannot sign in', () async {
       final account =
           store.accounts.firstWhere((a) => a.role == StaffRole.kitchen);
-      store.setStaffActive(account.id, false);
-      store.signOut();
+      await store.setStaffActive(account.id, false);
+      await store.signOut();
 
       expect(await store.signInWithPin(account.id, DemoData.kitchenPin), isFalse);
       expect(store.isSignedIn, isFalse);
     });
 
-    test('signed out, no staff action is possible', () {
+    test('signed out, no staff action is possible', () async {
       store.openTable(store.tableByNumber('05')!.id);
       store.addToCart(store.menuItem('food-01')!);
-      final order = store.submitOrder();
-      store.signOut();
+      final order = await store.submitOrder();
+      await store.signOut();
 
-      expect(() => store.startCooking(order.id), throwsStateError);
-      expect(() => store.collectPayment(order.id, 'Cash'), throwsStateError);
-      expect(() => store.setItemAvailability('food-01', false),
+      await expectLater(store.startCooking(order.id), throwsStateError);
+      await expectLater(store.collectPayment(order.id, 'Cash'), throwsStateError);
+      await expectLater(store.setItemAvailability('food-01', false),
           throwsStateError);
-      expect(() => store.addTable(), throwsStateError);
-      expect(
-        () => store.addStaff(
+      await expectLater(store.addTable(), throwsStateError);
+      await expectLater(store.addStaff(
             name: 'Nobody', role: StaffRole.kitchen, secret: '123456'),
         throwsStateError,
       );
     });
 
-    test('but a customer can still order without signing in', () {
-      store.signOut();
+    test('but a customer can still order without signing in', () async {
+      await store.signOut();
       store.openTable(store.tableByNumber('05')!.id);
       store.addToCart(store.menuItem('food-01')!);
 
-      final order = store.submitOrder();
+      final order = await store.submitOrder();
       expect(order.status, OrderStatus.newOrder);
     });
 
     test('kitchen can cook but cannot take money or edit the menu', () async {
-      final orderId = readyOrder();
+      final orderId = await readyOrder();
       await signInKitchen();
 
-      expect(() => store.collectPayment(orderId, 'Cash'), throwsStateError);
-      expect(() => store.setItemAvailability('food-01', false),
+      await expectLater(store.collectPayment(orderId, 'Cash'), throwsStateError);
+      await expectLater(store.setItemAvailability('food-01', false),
           throwsStateError);
-      expect(() => store.updateSettings(store.settings), throwsStateError);
-      expect(
-        () => store.addStaff(
+      await expectLater(store.updateSettings(store.settings), throwsStateError);
+      await expectLater(store.addStaff(
             name: 'Nobody', role: StaffRole.kitchen, secret: '123456'),
         throwsStateError,
       );
 
       store.openTable(store.tableByNumber('02')!.id);
       store.addToCart(store.menuItem('food-02')!);
-      final fresh = store.submitOrder();
-      store.startCooking(fresh.id);
+      final fresh = await store.submitOrder();
+      await store.startCooking(fresh.id);
       expect(store.order(fresh.id)!.status, OrderStatus.cooking);
     });
 
     test('cashier can take money but cannot cook or edit the menu', () async {
-      final orderId = readyOrder();
+      final orderId = await readyOrder();
       await signInCashier();
 
       store.openTable(store.tableByNumber('02')!.id);
       store.addToCart(store.menuItem('food-02')!);
-      final fresh = store.submitOrder();
-      expect(() => store.startCooking(fresh.id), throwsStateError);
-      expect(() => store.deleteMenuItem('food-01'), throwsStateError);
+      final fresh = await store.submitOrder();
+      await expectLater(store.startCooking(fresh.id), throwsStateError);
+      await expectLater(store.deleteMenuItem('food-01'), throwsStateError);
 
-      store.collectPayment(orderId, 'KHQR');
+      await store.collectPayment(orderId, 'KHQR');
       expect(store.order(orderId)!.status, OrderStatus.paid);
-      store.completeOrder(orderId);
+      await store.completeOrder(orderId);
       expect(store.order(orderId)!.status, OrderStatus.completed);
     });
 
-    test('admin can do all three jobs', () {
-      final orderId = readyOrder();
-      store.collectPayment(orderId, 'Cash');
-      store.completeOrder(orderId);
-      store.setItemAvailability('food-01', false);
-      store.addTable();
+    test('admin can do all three jobs', () async {
+      final orderId = await readyOrder();
+      await store.collectPayment(orderId, 'Cash');
+      await store.completeOrder(orderId);
+      await store.setItemAvailability('food-01', false);
+      await store.addTable();
 
       expect(store.order(orderId)!.status, OrderStatus.completed);
       expect(store.menuItem('food-01')!.available, isFalse);
     });
 
-    test('the last active admin cannot be removed or disabled', () {
+    test('the last active admin cannot be removed or disabled', () async {
       final admin = store.accounts.firstWhere((a) => a.role == StaffRole.admin);
-      expect(() => store.setStaffActive(admin.id, false), throwsStateError);
-      expect(() => store.deleteStaff(admin.id), throwsStateError);
+      await expectLater(store.setStaffActive(admin.id, false), throwsStateError);
+      await expectLater(store.deleteStaff(admin.id), throwsStateError);
 
-      final second = store.addStaff(
+      final second = await store.addStaff(
         name: 'Second Owner',
         role: StaffRole.admin,
         secret: 'another-password',
         username: 'owner2',
       );
-      store.setStaffActive(second.id, false);
+      await store.setStaffActive(second.id, false);
       expect(store.accounts.firstWhere((a) => a.id == second.id).active,
           isFalse);
     });
 
     test('a new account can sign in with the PIN the admin set', () async {
-      final created = store.addStaff(
+      final created = await store.addStaff(
         name: 'Dara',
         role: StaffRole.cashier,
         secret: '432100',
       );
-      store.signOut();
+      await store.signOut();
 
       expect(await store.signInWithPin(created.id, '123456'), isFalse);
       expect(await store.signInWithPin(created.id, '432100'), isTrue);
@@ -628,15 +626,15 @@ void main() {
     test('resetting a PIN invalidates the old one', () async {
       final account =
           store.accounts.firstWhere((a) => a.role == StaffRole.kitchen);
-      store.resetStaffSecret(account.id, '567800');
-      store.signOut();
+      await store.resetStaffSecret(account.id, '567800');
+      await store.signOut();
 
       expect(await store.signInWithPin(account.id, DemoData.kitchenPin),
           isFalse);
       expect(await store.signInWithPin(account.id, '567800'), isTrue);
     });
 
-    test('secrets are never stored in the clear', () {
+    test('secrets are never stored in the clear', () async {
       for (final account in store.accounts) {
         expect(account.secretHash, isNot(contains(DemoData.adminPassword)));
         expect(account.secretHash, isNot(contains(DemoData.kitchenPin)));
@@ -644,43 +642,41 @@ void main() {
         expect(account.secretHash.length, greaterThan(20));
       }
       // Same secret, different accounts: the salt must make the hashes differ.
-      final a = store.addStaff(
+      final a = await store.addStaff(
           name: 'A', role: StaffRole.kitchen, secret: '123456');
-      final b = store.addStaff(
+      final b = await store.addStaff(
           name: 'B', role: StaffRole.kitchen, secret: '123456');
       expect(a.secretHash, isNot(b.secretHash));
     });
   });
 
-  test('a PIN must be exactly six digits', () {
-    expect(
-      () => store.addStaff(
+  test('a PIN must be exactly six digits', () async {
+    await expectLater(store.addStaff(
           name: 'Short', role: StaffRole.kitchen, secret: '1234'),
       throwsStateError,
     );
-    expect(
-      () => store.addStaff(
+    await expectLater(store.addStaff(
           name: 'Long', role: StaffRole.kitchen, secret: '12345678'),
       throwsStateError,
     );
 
-    final ok = store.addStaff(
+    final ok = await store.addStaff(
         name: 'Sokha', role: StaffRole.cashier, secret: '654321');
     expect(ok.name, 'Sokha');
-    expect(() => store.resetStaffSecret(ok.id, '12'), throwsStateError);
+    await expectLater(store.resetStaffSecret(ok.id, '12'), throwsStateError);
   });
 
   group('cancelling an order', () {
-    test('a queued order can be pulled back, and frees its table', () {
+    test('a queued order can be pulled back, and frees its table', () async {
       // Table 10 carries only a completed seed order, so occupancy here is
       // entirely down to the order this test places.
       final table = store.tableByNumber('10')!;
       store.openTable(table.id);
       store.addToCart(store.menuItem('food-01')!);
-      final order = store.submitOrder();
+      final order = await store.submitOrder();
       expect(store.isTableOccupied(table.id), isTrue);
 
-      store.cancelOrder(order.id);
+      await store.cancelOrder(order.id);
 
       final cancelled = store.order(order.id)!;
       expect(cancelled.status, OrderStatus.cancelled);
@@ -689,53 +685,53 @@ void main() {
       expect(store.isTableOccupied(table.id), isFalse);
     });
 
-    test('once the kitchen has started, it is too late', () {
+    test('once the kitchen has started, it is too late', () async {
       store.openTable(store.tableByNumber('03')!.id);
       store.addToCart(store.menuItem('food-01')!);
-      final order = store.submitOrder();
+      final order = await store.submitOrder();
 
-      store.startCooking(order.id);
-      expect(() => store.cancelOrder(order.id), throwsStateError);
+      await store.startCooking(order.id);
+      await expectLater(store.cancelOrder(order.id), throwsStateError);
       expect(store.order(order.id)!.status, OrderStatus.cooking);
     });
 
-    test('a paid order cannot be cancelled either', () {
+    test('a paid order cannot be cancelled either', () async {
       store.openTable(store.tableByNumber('04')!.id);
       store.addToCart(store.menuItem('food-01')!);
-      final order = store.submitOrder();
-      store.startCooking(order.id);
-      store.markReady(order.id);
-      store.collectPayment(order.id, 'Cash');
+      final order = await store.submitOrder();
+      await store.startCooking(order.id);
+      await store.markReady(order.id);
+      await store.collectPayment(order.id, 'Cash');
 
-      expect(() => store.cancelOrder(order.id), throwsStateError);
+      await expectLater(store.cancelOrder(order.id), throwsStateError);
     });
 
     test('the kitchen cannot cancel, only the till', () async {
       store.openTable(store.tableByNumber('05')!.id);
       store.addToCart(store.menuItem('food-01')!);
-      final order = store.submitOrder();
+      final order = await store.submitOrder();
 
-      store.signOut();
+      await store.signOut();
       await store.signInWithPin(
         store.accounts.firstWhere((a) => a.role == StaffRole.kitchen).id,
         DemoData.kitchenPin,
       );
-      expect(() => store.cancelOrder(order.id), throwsStateError);
+      await expectLater(store.cancelOrder(order.id), throwsStateError);
     });
 
-    test('a cancelled order leaves the live list and the takings', () {
+    test('a cancelled order leaves the live list and the takings', () async {
       // Deltas, not absolutes: the demo seed already has orders on the floor.
       final pendingBefore = store.todaySummary.pending;
       final revenueBefore = store.todaySummary.revenue;
 
       store.openTable(store.tableByNumber('06')!.id);
       store.addToCart(store.menuItem('food-01')!);
-      final order = store.submitOrder();
+      final order = await store.submitOrder();
 
       expect(store.liveOrders.map((o) => o.id), contains(order.id));
       expect(store.todaySummary.pending, pendingBefore + 1);
 
-      store.cancelOrder(order.id);
+      await store.cancelOrder(order.id);
 
       expect(store.liveOrders.map((o) => o.id), isNot(contains(order.id)));
       expect(store.settledOrders.map((o) => o.id), contains(order.id));
@@ -746,8 +742,8 @@ void main() {
     test('cancellation survives a reload', () async {
       store.openTable(store.tableByNumber('01')!.id);
       store.addToCart(store.menuItem('food-01')!);
-      final order = store.submitOrder();
-      store.cancelOrder(order.id);
+      final order = await store.submitOrder();
+      await store.cancelOrder(order.id);
       await Future<void>.delayed(Duration.zero);
 
       final reloaded = AppStore();
@@ -772,9 +768,9 @@ void main() {
             ),
         ];
 
-    test('reaches the kitchen like any other, and records who took it', () {
+    test('reaches the kitchen like any other, and records who took it', () async {
       final table = store.tableByNumber('02')!;
-      final order = store.placeStaffOrder(
+      final order = await store.placeStaffOrder(
         type: OrderType.dineIn,
         tableId: table.id,
         lines: linesOf(store, ['food-01', 'food-02']),
@@ -790,12 +786,12 @@ void main() {
           contains(order.id));
     });
 
-    test('never touches the customer session on the same device', () {
+    test('never touches the customer session on the same device', () async {
       store.openTable(store.tableByNumber('05')!.id);
       store.addToCart(store.menuItem('food-03')!);
       final customerCart = store.cart.length;
 
-      store.placeStaffOrder(
+      await store.placeStaffOrder(
         type: OrderType.takeaway,
         lines: linesOf(store, ['food-01']),
       );
@@ -805,9 +801,8 @@ void main() {
       expect(store.orderType, OrderType.dineIn);
     });
 
-    test('a dine-in order without a table is refused', () {
-      expect(
-        () => store.placeStaffOrder(
+    test('a dine-in order without a table is refused', () async {
+      await expectLater(store.placeStaffOrder(
           type: OrderType.dineIn,
           lines: linesOf(store, ['food-01']),
         ),
@@ -815,21 +810,19 @@ void main() {
       );
     });
 
-    test('an empty basket is refused', () {
-      expect(
-        () => store.placeStaffOrder(type: OrderType.takeaway, lines: []),
+    test('an empty basket is refused', () async {
+      await expectLater(store.placeStaffOrder(type: OrderType.takeaway, lines: []),
         throwsStateError,
       );
     });
 
     test('the kitchen cannot take orders at the till', () async {
-      store.signOut();
+      await store.signOut();
       await store.signInWithPin(
         store.accounts.firstWhere((a) => a.role == StaffRole.kitchen).id,
         DemoData.kitchenPin,
       );
-      expect(
-        () => store.placeStaffOrder(
+      await expectLater(store.placeStaffOrder(
           type: OrderType.takeaway,
           lines: linesOf(store, ['food-01']),
         ),
@@ -837,11 +830,11 @@ void main() {
       );
     });
 
-    test('it shares the one order-number sequence', () {
+    test('it shares the one order-number sequence', () async {
       store.openTable(store.tableByNumber('01')!.id);
       store.addToCart(store.menuItem('food-01')!);
-      final fromPhone = store.submitOrder();
-      final fromTill = store.placeStaffOrder(
+      final fromPhone = await store.submitOrder();
+      final fromTill = await store.placeStaffOrder(
         type: OrderType.takeaway,
         lines: linesOf(store, ['food-02']),
       );
@@ -852,7 +845,7 @@ void main() {
   });
 
   group('choosing a table mid-order', () {
-    test('switching from takeaway to dine in keeps the basket', () {
+    test('switching from takeaway to dine in keeps the basket', () async {
       store.startTakeaway();
       store.addToCart(store.menuItem('food-01')!);
       store.addToCart(store.menuItem('food-02')!);
@@ -863,12 +856,12 @@ void main() {
       expect(store.activeTable?.number, '04');
       expect(store.cart.length, 2);
 
-      final order = store.submitOrder();
+      final order = await store.submitOrder();
       expect(order.tableNumber, '04');
       expect(order.isTakeaway, isFalse);
     });
 
-    test('an unknown table is refused', () {
+    test('an unknown table is refused', () async {
       store.startTakeaway();
       expect(() => store.chooseTable('nope'), throwsStateError);
       expect(store.orderType, OrderType.takeaway);
@@ -890,8 +883,8 @@ void main() {
       expect(store.mode, AppMode.staff);
     });
 
-    test('two admins cannot share a username', () {
-      store.addStaff(
+    test('two admins cannot share a username', () async {
+      await store.addStaff(
         name: 'Second owner',
         role: StaffRole.admin,
         secret: 'longenoughpassword',
@@ -900,8 +893,7 @@ void main() {
 
       // Same name in different case is the same login, because sign-in
       // compares case-insensitively.
-      expect(
-        () => store.addStaff(
+      await expectLater(store.addStaff(
           name: 'Impostor',
           role: StaffRole.admin,
           secret: 'anotherpassword',
@@ -909,8 +901,7 @@ void main() {
         ),
         throwsStateError,
       );
-      expect(
-        () => store.addStaff(
+      await expectLater(store.addStaff(
           name: 'Also the owner',
           role: StaffRole.admin,
           secret: 'yetanotherpass',
@@ -921,19 +912,19 @@ void main() {
     });
 
     test('every admin account can actually sign in', () async {
-      final second = store.addStaff(
+      final second = await store.addStaff(
         name: 'Second owner',
         role: StaffRole.admin,
         secret: 'longenoughpassword',
         username: 'newowner',
       );
-      store.signOut();
+      await store.signOut();
 
       expect(await store.signInWithPassword('newowner', 'longenoughpassword'),
           isTrue);
       expect(store.currentUser!.id, second.id);
 
-      store.signOut();
+      await store.signOut();
       expect(
         await store.signInWithPassword(
             DemoData.adminUsername, DemoData.adminPassword),
@@ -943,11 +934,11 @@ void main() {
 
     test('staff PINs may repeat — they are never used to pick the account',
         () async {
-      final first = store.addStaff(
+      final first = await store.addStaff(
           name: 'Dara', role: StaffRole.kitchen, secret: '112233');
-      final second = store.addStaff(
+      final second = await store.addStaff(
           name: 'Sopheak', role: StaffRole.cashier, secret: '112233');
-      store.signOut();
+      await store.signOut();
 
       expect(await store.signInWithPin(second.id, '112233'), isTrue);
       expect(store.currentUser!.id, second.id);
@@ -956,19 +947,19 @@ void main() {
   });
 
   group('changing what is on an order', () {
-    Order queuedOrder(AppStore store, String tableNumber) {
+    Future<Order> queuedOrder(AppStore store, String tableNumber) async {
       store.openTable(store.tableByNumber(tableNumber)!.id);
       store.addToCart(store.menuItem('food-01')!, quantity: 2);
       store.addToCart(store.menuItem('food-06')!);
       return store.submitOrder();
     }
 
-    test('a dish can be taken off, and the total follows', () {
-      final order = queuedOrder(store, '10');
+    test('a dish can be taken off, and the total follows', () async {
+      final order = await queuedOrder(store, '10');
       final drink = order.items.last;
       expect(order.items.length, 2);
 
-      store.removeOrderItem(order.id, drink.id);
+      await store.removeOrderItem(order.id, drink.id);
 
       final updated = store.order(order.id)!;
       expect(updated.items.length, 1);
@@ -978,11 +969,11 @@ void main() {
       expect(updated.itemCount, 2);
     });
 
-    test('a quantity can be reduced without removing the line', () {
-      final order = queuedOrder(store, '10');
+    test('a quantity can be reduced without removing the line', () async {
+      final order = await queuedOrder(store, '10');
       final dish = order.items.first;
 
-      store.setOrderItemQuantity(order.id, dish.id, 1);
+      await store.setOrderItemQuantity(order.id, dish.id, 1);
 
       final updated = store.order(order.id)!;
       expect(updated.items.length, 2);
@@ -991,72 +982,66 @@ void main() {
           updated.items.fold<double>(0, (sum, i) => sum + i.lineTotal));
     });
 
-    test('the last dish cannot be removed — that is a cancellation', () {
-      final order = queuedOrder(store, '10');
-      store.removeOrderItem(order.id, order.items.last.id);
+    test('the last dish cannot be removed — that is a cancellation', () async {
+      final order = await queuedOrder(store, '10');
+      await store.removeOrderItem(order.id, order.items.last.id);
 
       final remaining = store.order(order.id)!.items.single;
-      expect(
-        () => store.removeOrderItem(order.id, remaining.id),
+      await expectLater(store.removeOrderItem(order.id, remaining.id),
         throwsStateError,
       );
       expect(store.order(order.id)!.items, hasLength(1));
       expect(store.order(order.id)!.status, OrderStatus.newOrder);
     });
 
-    test('once the kitchen has started, the order is frozen', () {
-      final order = queuedOrder(store, '10');
-      store.startCooking(order.id);
+    test('once the kitchen has started, the order is frozen', () async {
+      final order = await queuedOrder(store, '10');
+      await store.startCooking(order.id);
 
-      expect(
-        () => store.removeOrderItem(order.id, order.items.first.id),
+      await expectLater(store.removeOrderItem(order.id, order.items.first.id),
         throwsStateError,
       );
-      expect(
-        () => store.setOrderItemQuantity(order.id, order.items.first.id, 1),
+      await expectLater(store.setOrderItemQuantity(order.id, order.items.first.id, 1),
         throwsStateError,
       );
       expect(store.order(order.id)!.items, hasLength(2));
     });
 
-    test('a paid order is frozen too', () {
-      final order = queuedOrder(store, '10');
-      store.startCooking(order.id);
-      store.markReady(order.id);
-      store.collectPayment(order.id, 'Cash');
+    test('a paid order is frozen too', () async {
+      final order = await queuedOrder(store, '10');
+      await store.startCooking(order.id);
+      await store.markReady(order.id);
+      await store.collectPayment(order.id, 'Cash');
 
-      expect(
-        () => store.removeOrderItem(order.id, order.items.first.id),
+      await expectLater(store.removeOrderItem(order.id, order.items.first.id),
         throwsStateError,
       );
     });
 
     test('the kitchen cannot edit an order, only the till', () async {
-      final order = queuedOrder(store, '10');
-      store.signOut();
+      final order = await queuedOrder(store, '10');
+      await store.signOut();
       await store.signInWithPin(
         store.accounts.firstWhere((a) => a.role == StaffRole.kitchen).id,
         DemoData.kitchenPin,
       );
 
-      expect(
-        () => store.removeOrderItem(order.id, order.items.first.id),
+      await expectLater(store.removeOrderItem(order.id, order.items.first.id),
         throwsStateError,
       );
     });
 
-    test('an unknown dish or order is refused', () {
-      final order = queuedOrder(store, '10');
-      expect(() => store.removeOrderItem(order.id, 'nope'), throwsStateError);
-      expect(
-        () => store.removeOrderItem('nope', order.items.first.id),
+    test('an unknown dish or order is refused', () async {
+      final order = await queuedOrder(store, '10');
+      await expectLater(store.removeOrderItem(order.id, 'nope'), throwsStateError);
+      await expectLater(store.removeOrderItem('nope', order.items.first.id),
         throwsStateError,
       );
     });
 
     test('the edit survives a reload', () async {
-      final order = queuedOrder(store, '10');
-      store.removeOrderItem(order.id, order.items.last.id);
+      final order = await queuedOrder(store, '10');
+      await store.removeOrderItem(order.id, order.items.last.id);
       final expectedTotal = store.order(order.id)!.total;
       await Future<void>.delayed(Duration.zero);
 

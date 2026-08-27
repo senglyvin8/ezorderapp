@@ -1,0 +1,156 @@
+import '../../models/cart_line.dart';
+import '../../models/menu_category.dart';
+import '../../models/menu_item.dart';
+import '../../models/order.dart';
+import '../../models/restaurant_settings.dart';
+import '../../models/restaurant_table.dart';
+import '../../models/staff_account.dart';
+
+/// Everything the restaurant shares: its profile, its menu, its tables, its
+/// orders and who can sign in.
+///
+/// Deliberately *not* everything the app knows. Which table this phone
+/// scanned, what is in this diner's cart, which language this device is set
+/// to — none of that belongs to the restaurant, and none of it is here. That
+/// stays on the device whichever backend is in use.
+class RestaurantData {
+  const RestaurantData({
+    required this.settings,
+    required this.categories,
+    required this.menuItems,
+    required this.tables,
+    required this.orders,
+    required this.accounts,
+  });
+
+  final RestaurantSettings settings;
+  final List<MenuCategory> categories;
+  final List<MenuItem> menuItems;
+  final List<RestaurantTable> tables;
+  final List<Order> orders;
+  final List<StaffAccount> accounts;
+
+  RestaurantData copyWith({
+    RestaurantSettings? settings,
+    List<MenuCategory>? categories,
+    List<MenuItem>? menuItems,
+    List<RestaurantTable>? tables,
+    List<Order>? orders,
+    List<StaffAccount>? accounts,
+  }) =>
+      RestaurantData(
+        settings: settings ?? this.settings,
+        categories: categories ?? this.categories,
+        menuItems: menuItems ?? this.menuItems,
+        tables: tables ?? this.tables,
+        orders: orders ?? this.orders,
+        accounts: accounts ?? this.accounts,
+      );
+}
+
+/// Where the restaurant's data actually lives.
+///
+/// Two implementations: [LocalBackend] keeps it on the device, which is the
+/// demo and what the tests run against; [SupabaseBackend] keeps it in Postgres,
+/// which is what makes the kitchen tablet and the diner's phone two views of
+/// one restaurant rather than two unrelated apps.
+///
+/// Every mutation returns a Future and every one may throw [StateError] with a
+/// message meant for a human — the UI shows these directly. Permission and
+/// state-machine failures come back the same way whichever backend is in use;
+/// on Supabase they originate in Postgres, which is the point.
+abstract class Backend {
+  /// True when this is the on-device demo rather than a real database.
+  bool get isDemo;
+
+  /// Reads everything. Called once at startup and again after anything the
+  /// backend cannot report incrementally.
+  Future<RestaurantData> load();
+
+  /// The data as the backend last saw it. Read straight after a mutation, so
+  /// the screen that triggered it repaints without waiting for a round trip
+  /// it has already made.
+  RestaurantData get current;
+
+  /// Fires whenever the data changed underneath us — another device took an
+  /// order, the kitchen started cooking. The local backend never fires it;
+  /// there is nobody else to hear from.
+  Stream<RestaurantData> get changes;
+
+  Future<void> dispose();
+
+  // ------------------------------------------------------------------- auth
+
+  /// Whoever is signed in, or null. Kept by the backend because on Supabase
+  /// the session outlives the app.
+  StaffAccount? get currentUser;
+
+  /// Admins sign in by username; kitchen and cashier tap a name and enter a
+  /// PIN. Both return null when the credentials are wrong or the account is
+  /// turned off — never a reason, so neither can be probed.
+  Future<StaffAccount?> signInWithPassword(String username, String password);
+  Future<StaffAccount?> signInWithPin(String accountId, String pin);
+  Future<void> signOut();
+
+  // ----------------------------------------------------------------- orders
+
+  /// Rule 11 — a dine-in order carries its table, takeaway carries none.
+  /// Rule 12 — the number is unique, and the backend hands it out.
+  Future<Order> placeOrder({
+    required OrderType type,
+    String? tableId,
+    required List<CartLine> lines,
+    String note = '',
+    bool onBehalfOfCustomer = false,
+  });
+
+  /// Rule 6 — kitchen owns NEW -> COOKING -> READY.
+  Future<void> startCooking(String orderId);
+  Future<void> markReady(String orderId);
+
+  /// Rule 7 — cashier owns READY -> PAID -> COMPLETED.
+  Future<void> collectPayment(String orderId, String paymentMethod);
+  Future<void> completeOrder(String orderId);
+
+  /// Only while the order is still queued.
+  Future<void> cancelOrder(String orderId);
+  Future<void> setOrderItemQuantity(String orderId, String itemId, int quantity);
+
+  // ------------------------------------------------------------------- menu
+
+  Future<void> addMenuItem(MenuItem item);
+  Future<void> updateMenuItem(MenuItem item);
+  Future<void> deleteMenuItem(String id);
+  Future<void> setItemAvailability(String id, bool available);
+
+  Future<MenuCategory> addCategory(String name, {String nameKm = ''});
+  Future<void> renameCategory(String id, String name, {String nameKm = ''});
+  Future<void> deleteCategory(String id);
+
+  // ----------------------------------------------------------------- tables
+
+  Future<RestaurantTable> addTable();
+  Future<void> renameTable(String id, String name);
+  Future<void> deleteTable(String id);
+
+  // ------------------------------------------------------------------ staff
+
+  Future<StaffAccount> addStaff({
+    required String name,
+    required StaffRole role,
+    required String secret,
+    String username = '',
+  });
+  Future<void> renameStaff(String id, String name);
+  Future<void> resetStaffSecret(String id, String secret);
+  Future<void> setStaffActive(String id, bool active);
+  Future<void> deleteStaff(String id);
+
+  // --------------------------------------------------------------- settings
+
+  Future<void> updateSettings(RestaurantSettings settings);
+
+  /// Throws on a real backend: there is no demo data to put back, and wiping a
+  /// live restaurant from a settings screen is not a feature.
+  Future<void> resetDemoData();
+}

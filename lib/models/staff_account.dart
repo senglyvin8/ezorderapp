@@ -33,8 +33,8 @@ class StaffAccount {
     required this.id,
     required this.name,
     required this.role,
-    required this.salt,
-    required this.secretHash,
+    this.salt = '',
+    this.secretHash = '',
     this.username = '',
     this.active = true,
   });
@@ -46,14 +46,22 @@ class StaffAccount {
   /// Only admins have one; staff are picked from a list instead.
   final String username;
 
+  /// Empty when the account lives behind Supabase Auth: the secret is the
+  /// server's to hold, and this device never sees it. Only the on-device demo
+  /// backend fills these in.
   final String salt;
   final String secretHash;
+
+  bool get hasLocalSecret => salt.isNotEmpty && secretHash.isNotEmpty;
   final bool active;
 
   bool get usesPassword => role == StaffRole.admin;
 
+  /// Only meaningful on the demo backend. A Supabase-backed account has no
+  /// secret here to check against, so this is always false — the answer comes
+  /// from the server instead.
   bool verify(String secret) =>
-      active && Credentials.verify(secret, salt, secretHash);
+      active && hasLocalSecret && Credentials.verify(secret, salt, secretHash);
 
   StaffAccount copyWith({
     String? name,
@@ -84,8 +92,8 @@ class StaffAccount {
         'name': name,
         'role': role.wire,
         if (username.isNotEmpty) 'username': username,
-        'salt': salt,
-        'secretHash': secretHash,
+        if (salt.isNotEmpty) 'salt': salt,
+        if (secretHash.isNotEmpty) 'secretHash': secretHash,
         'active': active,
       };
 
@@ -94,8 +102,8 @@ class StaffAccount {
         name: json['name'] as String,
         role: StaffRole.fromWire(json['role'] as String),
         username: json['username'] as String? ?? '',
-        salt: json['salt'] as String,
-        secretHash: json['secretHash'] as String,
+        salt: json['salt'] as String? ?? '',
+        secretHash: json['secretHash'] as String? ?? '',
         active: json['active'] as bool? ?? true,
       );
 

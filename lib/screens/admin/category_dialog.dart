@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../data/app_store.dart';
 import '../../models/menu_category.dart';
 import '../../theme/app_theme.dart';
+import '../../widgets/app_chrome.dart';
 import '../../widgets/bilingual_field.dart';
 
 /// Creates or renames a category. Returns the category id on success so the
@@ -61,9 +62,14 @@ Future<String?> showCategoryDialog(
   nameKm.dispose();
 
   if (saved != true || value.isEmpty) return null;
-  if (category == null) {
-    return store.addCategory(value, nameKm: valueKm).id;
+  try {
+    if (category == null) {
+      return (await store.addCategory(value, nameKm: valueKm)).id;
+    }
+    await store.renameCategory(category.id, value, nameKm: valueKm);
+    return category.id;
+  } on StateError catch (error) {
+    if (context.mounted) showToast(context, error.message, error: true);
+    return null;
   }
-  store.renameCategory(category.id, value, nameKm: valueKm);
-  return category.id;
 }

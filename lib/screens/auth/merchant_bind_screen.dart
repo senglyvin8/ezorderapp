@@ -23,6 +23,7 @@ class MerchantBindScreen extends StatefulWidget {
     required this.resolve,
     required this.onBound,
     this.signIn,
+    this.onGuest,
     this.current,
   });
 
@@ -37,6 +38,10 @@ class MerchantBindScreen extends StatefulWidget {
   /// restaurant is worked out. Null on a build with no project behind it,
   /// where there is nobody to ask.
   final MerchantSignIn? signIn;
+
+  /// Opens the on-device demo instead, for somebody who has just downloaded
+  /// the app and has neither a merchant ID nor an account.
+  final VoidCallback? onGuest;
 
   /// What this device is bound to now, when it is being re-pointed rather than
   /// set up. Shown so somebody re-purposing a tablet can see what they are
@@ -283,6 +288,23 @@ class _MerchantBindScreenState extends State<MerchantBindScreen> {
                       _error = null;
                     }),
                     child: Text(t.ownerSignInInstead),
+                  ),
+                ],
+                // Neither a code nor an account: somebody deciding whether the
+                // product is any good. Turning them away at the door is a
+                // strange way to sell anything.
+                if (widget.onGuest != null) ...[
+                  const Divider(height: 30),
+                  Text(t.tryAsGuestBlurb,
+                      textAlign: TextAlign.center, style: AppType.label),
+                  const SizedBox(height: 10),
+                  OutlinedButton.icon(
+                    onPressed: _busy ? null : widget.onGuest,
+                    icon: const Icon(Icons.explore_rounded, size: 19),
+                    label: Text(t.tryAsGuest),
+                    style: OutlinedButton.styleFrom(
+                      minimumSize: const Size(double.infinity, 52),
+                    ),
                   ),
                 ],
               ] else ...[

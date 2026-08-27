@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 
 import 'config/app_config.dart';
 import 'data/app_store.dart';
+import 'data/guest_mode.dart';
 import 'data/merchant_binding.dart';
 import 'screens/admin/admin_root.dart';
 import 'screens/cashier/cashier_root.dart';
@@ -11,16 +12,21 @@ import 'screens/kitchen/kitchen_root.dart';
 import 'screens/table_entry_page.dart';
 import 'models/staff_account.dart';
 import 'theme/app_theme.dart';
+import 'widgets/guest_banner.dart';
 import 'widgets/session_bar.dart';
 
 class RestaurantApp extends StatelessWidget {
-  const RestaurantApp({super.key, this.onRebind});
+  const RestaurantApp({super.key, this.onRebind, this.guest = false});
 
   /// How to point this device at another merchant, when that is something this
   /// build can do at all. Null on the demo and on a build compiled for one
   /// restaurant; the sign-in screen hides the affordance rather than offering
   /// one that cannot work.
   final Future<void> Function()? onRebind;
+
+  /// True while this device is looking round the demo rather than running a
+  /// restaurant. Drives the banner that says so.
+  final bool guest;
 
   @override
   Widget build(BuildContext context) {
@@ -37,12 +43,15 @@ class RestaurantApp extends StatelessWidget {
           // Always provided, sometimes null: a screen deep in the tree can ask
           // for it without having to know whether this build has one.
           value: onRebind == null ? null : RebindDevice(onRebind!),
-          child: MediaQuery(
+          child: Provider<GuestSession>.value(
+            value: GuestSession(guest),
+            child: MediaQuery(
             data: media.copyWith(
               textScaler: media.textScaler.clamp(
                   minScaleFactor: 1.0, maxScaleFactor: Style.maxTextScale),
             ),
-            child: child!,
+              child: child!,
+            ),
           ),
         );
       },
@@ -87,6 +96,7 @@ class AppShell extends StatelessWidget {
       backgroundColor: AppColors.surface,
       body: Column(
         children: [
+          const GuestBanner(),
           const SessionBar(),
           Expanded(
             child: MediaQuery.removePadding(

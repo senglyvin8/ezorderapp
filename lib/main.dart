@@ -9,6 +9,7 @@ import 'data/app_store.dart';
 import 'data/backend/backend.dart';
 import 'data/backend/local_backend.dart';
 import 'data/backend/supabase_backend.dart';
+import 'data/guest_mode.dart';
 import 'data/merchant_binding.dart';
 import 'l10n/app_text.dart';
 import 'models/merchant_code.dart';
@@ -48,6 +49,10 @@ class _BootstrapState extends State<Bootstrap> {
   MerchantBinding? _binding;
   bool _supabaseReady = false;
 
+  /// Looking round rather than running a shop. Opens the on-device demo
+  /// whatever project this build was compiled against.
+  bool _guest = false;
+
   @override
   void initState() {
     super.initState();
@@ -60,7 +65,8 @@ class _BootstrapState extends State<Bootstrap> {
       _needsBinding = false;
     });
     try {
-      if (BackendConfig.hasProject) {
+      _guest = await GuestMode.isOn();
+      if (BackendConfig.hasProject && !_guest) {
         await _initSupabase();
         _binding = await MerchantBinding.read();
         BackendConfig.bindSlug(_binding?.slug);
@@ -71,7 +77,7 @@ class _BootstrapState extends State<Bootstrap> {
           return;
         }
       }
-      final store = AppStore(backend: await _openBackend());
+      final store = AppStore(backend: await _openBackend(guest: _guest));
       await store.load();
       if (mounted) setState(() => _store = store);
     } catch (error) {
@@ -95,8 +101,16 @@ class _BootstrapState extends State<Bootstrap> {
   }
 
   Future<void> _bind(MerchantBinding binding) async {
+    // Binding to a real merchant ends the demo. Somebody who has finished
+    // looking round and typed a code means it.
+    await GuestMode.leave();
     await binding.save();
     BackendConfig.bindSlug(binding.slug);
+    if (mounted) await _open();
+  }
+
+  Future<void> _enterGuest() async {
+    await GuestMode.enter();
     if (mounted) await _open();
   }
 
@@ -104,6 +118,7 @@ class _BootstrapState extends State<Bootstrap> {
   /// store goes with it — it holds a restaurant that is no longer this
   /// device's.
   Future<void> _rebind() async {
+    await GuestMode.leave();
     await MerchantBinding.clear();
     BackendConfig.bindSlug(null);
     if (!mounted) return;
@@ -124,10 +139,14 @@ class _BootstrapState extends State<Bootstrap> {
         // affordance: on the demo, and on a build compiled for one shop,
         // there is nowhere to go.
         child: RestaurantApp(
+          // A visitor looking round always gets the way out, even on a build
+          // compiled for one restaurant: the demo is the only thing standing
+          // between them and that restaurant.
           onRebind: BackendConfig.hasProject &&
-                  BackendConfig.restaurantSlug.isEmpty
+                  (_guest || BackendConfig.restaurantSlug.isEmpty)
               ? _rebind
               : null,
+          guest: _guest,
         ),
       );
     }
@@ -142,6 +161,7 @@ class _BootstrapState extends State<Bootstrap> {
             text: const AppText(Brand.defaultLanguage),
             resolve: resolveMerchantByCode,
             signIn: signInAsOwner,
+            onGuest: _enterGuest,
             onBound: _bind,
             current: _binding,
           ),
@@ -223,8 +243,11 @@ class _CannotOpen extends StatelessWidget {
 /// A *configured* build that cannot reach its project does not fall back —
 /// it reports the failure. Quietly showing a seeded demo restaurant to staff
 /// who are looking for today's orders would be worse than saying nothing.
-Future<Backend> _openBackend() async {
-  if (!BackendConfig.usesSupabase) return LocalBackend();
+Future<Backend> _openBackend({bool guest = false}) async {
+  // A guest gets the seeded restaurant on their own device: every screen
+  // works, none of it is anybody's real data, and there is no shared sandbox
+  // for one visitor to spoil for the next.
+  if (guest || !BackendConfig.usesSupabase) return LocalBackend();
   return SupabaseBackend(Supabase.instance.client);
 }
 

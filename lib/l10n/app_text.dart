@@ -81,6 +81,21 @@ class AppText {
         'restaurant this device is for.',
         'ចូលដោយអ៊ីមែល និងពាក្យសម្ងាត់របស់អ្នក យើងនឹងដឹងថាឧបករណ៍នេះសម្រាប់ហាងណា។',
       );
+  String get tryAsGuest => _('Try it as a guest', 'សាកល្បងជាភ្ញៀវ');
+  String get tryAsGuestBlurb => _(
+        'No account needed. You get a restaurant of your own to play with — '
+        'a menu, tables, orders — all on this device only.',
+        'មិនត្រូវការគណនីទេ។ អ្នកនឹងទទួលបានហាងសាកល្បងផ្ទាល់ខ្លួន — ម៉ឺនុយ តុ '
+        'និងការបញ្ជាទិញ — ទាំងអស់នៅលើឧបករណ៍នេះតែប៉ុណ្ណោះ។',
+      );
+  String get guestMode => _('Demo — not a real restaurant', 'សាកល្បង — មិនមែនហាងពិត');
+  String get leaveGuestMode => _('Set up my restaurant', 'រៀបចំហាងរបស់ខ្ញុំ');
+  String get leaveGuestModeBody => _(
+        'This closes the demo and asks for your merchant ID, or your owner '
+        'sign-in. The demo stays on this device if you want it back.',
+        'នេះនឹងបិទការសាកល្បង ហើយសួររកលេខសម្គាល់ហាង ឬការចូលរបស់ម្ចាស់ហាង។ '
+        'ការសាកល្បងនៅតែមាននៅលើឧបករណ៍នេះ បើអ្នកចង់ត្រឡប់មកវិញ។',
+      );
   String get useMerchantIdInstead =>
       _('Use a merchant ID instead', 'ប្រើលេខសម្គាល់ហាងវិញ');
   String get usernameTaken => _(

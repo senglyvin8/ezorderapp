@@ -415,17 +415,31 @@ class LocalBackend implements Backend {
           : 'No table selected — scan a table QR first');
     }
 
-    final items = lines
-        .map((l) => OrderItem(
-              id: _uid('item'),
-              foodId: l.foodId,
-              name: l.name,
-              nameKm: l.nameKm,
-              price: l.price,
-              quantity: l.quantity,
-              note: l.note,
-            ))
-        .toList();
+    // Mirrors the checks in place_order() — 0008_platform.sql. A cart is a
+    // snapshot taken when the dish was tapped, and the menu moves on without
+    // it: a dish sells out while the customer reads the rest of the menu, or
+    // the owner deletes one while a phone still holds it. Checking only at
+    // add-to-cart time sends the kitchen food it cannot cook.
+    final items = lines.map((l) {
+      final item = _menuItems.where((m) => m.id == l.foodId).firstOrNull;
+      if (item == null) {
+        throw StateError('That dish is not on this menu');
+      }
+      if (!item.available) {
+        throw StateError('${item.name} is sold out');
+      }
+      return OrderItem(
+        id: _uid('item'),
+        foodId: l.foodId,
+        name: l.name,
+        nameKm: l.nameKm,
+        price: l.price,
+        // As in the SQL: a line is worth at least one of the dish, so a
+        // quantity of zero or less can never bill or feed anybody.
+        quantity: l.quantity < 1 ? 1 : l.quantity,
+        note: l.note,
+      );
+    }).toList();
     final subtotal = items.fold<double>(0, (sum, i) => sum + i.lineTotal);
     final clean = note.trim();
 

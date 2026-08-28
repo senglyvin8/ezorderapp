@@ -289,6 +289,35 @@ class _CartLineCard extends StatelessWidget {
               ],
             ),
           ),
+          if (store.cartLineUnavailable(line)) ...[
+            const SizedBox(height: 9),
+            Container(
+              width: double.infinity,
+              margin: const EdgeInsets.only(right: 5),
+              padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 7),
+              decoration: BoxDecoration(
+                color: tint(AppColors.danger),
+                borderRadius: BorderRadius.circular(AppRadius.small),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.remove_shopping_cart_rounded,
+                      size: 16, color: AppColors.danger),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      store.text.soldOutRemoveToOrder,
+                      style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.danger,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
           if ((line.note ?? '').isNotEmpty) ...[
             const SizedBox(height: 9),
             Container(

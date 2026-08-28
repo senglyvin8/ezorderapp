@@ -129,6 +129,18 @@ class AppStore extends ChangeNotifier {
   double get cartSubtotal => _cart.fold(0, (sum, l) => sum + l.lineTotal);
   double get cartTotal => cartSubtotal;
 
+  /// True when the dish behind [line] has sold out or left the menu since it
+  /// was added.
+  ///
+  /// A cart is a snapshot, and the menu carries on without it — the kitchen
+  /// runs out of pork while somebody is still reading the drinks. The order
+  /// would be refused on submit either way; this lets the cart say so while
+  /// there is still a Remove button next to the line.
+  bool cartLineUnavailable(CartLine line) {
+    final item = menuItem(line.foodId);
+    return item == null || !item.available;
+  }
+
   String money(double value) =>
       '${settings.currencySymbol}${value.toStringAsFixed(2)}';
 
@@ -160,9 +172,6 @@ class AppStore extends ChangeNotifier {
 
   MenuCategory? category(String id) =>
       _data.categories.where((c) => c.id == id).firstOrNull;
-
-  String categoryName(String id) =>
-      category(id)?.name ?? (id == kPopularCategoryId ? 'Popular' : 'Unknown');
 
   Order? order(String id) => _data.orders.where((o) => o.id == id).firstOrNull;
 
@@ -630,6 +639,12 @@ class AppStore extends ChangeNotifier {
     if (!item.available) {
       throw StateError('${item.name} is sold out');
     }
+    // The stepper cannot go below one, but this is the door every caller comes
+    // through, and a zero would put a line in the cart that costs nothing and
+    // feeds nobody — a negative one would take money off the bill.
+    if (quantity < 1) {
+      throw StateError('Choose at least one ${item.name}');
+    }
     final cleanNote = (note ?? '').trim();
     final unitPrice = item.effectivePrice;
     final existing = _cart.indexWhere(
@@ -845,10 +860,6 @@ class AppStore extends ChangeNotifier {
   /// fails.
   bool get atStaffLimit => !settings.plan.canAddStaff(accounts.length);
   bool get atTableLimit => !settings.plan.canAddTable(tables.length);
-
-  /// The plan a merchant who is blocked should be offered. The next one up,
-  /// except at the top where there is nothing to offer.
-  Plan? get suggestedPlan => settings.plan.next;
 
   Future<void> requestUpgrade({
     required Plan toPlan,

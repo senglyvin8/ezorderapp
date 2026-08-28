@@ -28,8 +28,6 @@ class AppText {
   bool get isKhmer => lang == AppLanguage.km;
 
   // ------------------------------------------------------------ roles / demo
-  String get demoRole => _('DEMO ROLE', 'តួនាទីសាកល្បង');
-  String get roleCustomer => _('Customer', 'អតិថិជន');
   String get roleKitchen => _('Kitchen', 'ផ្ទះបាយ');
   String get roleCashier => _('Cashier', 'អ្នកគិតលុយ');
   String get roleAdmin => _('Admin', 'អ្នកគ្រប់គ្រង');
@@ -56,18 +54,6 @@ class AppText {
         'That does not look like an email address',
         'នេះមិនមែនជាអាសយដ្ឋានអ៊ីមែលទេ',
       );
-  String get emailTaken => _(
-        'Another account already uses that email address',
-        'គណនីផ្សេងកំពុងប្រើអ៊ីមែលនេះ',
-      );
-  String get ownerNeedsEmail => _(
-        'An owner needs an email address to sign in with',
-        'ម្ចាស់ហាងត្រូវការអ៊ីមែលដើម្បីចូលប្រើ',
-      );
-  String get passwordTooShort => _(
-        'A password must be at least 8 characters',
-        'ពាក្យសម្ងាត់ត្រូវមានយ៉ាងតិច ៨ តួ',
-      );
   String get signInEmail => _('Sign-in email', 'អ៊ីមែលចូលប្រើ');
   String get signInEmailBlurb => _(
         'What you type to sign in as the owner. Staff keep using their PIN.',
@@ -93,10 +79,6 @@ class AppText {
         'sign-in. The demo stays on this device if you want it back.',
         'នេះនឹងបិទការសាកល្បង ហើយសួររកលេខសម្គាល់ហាង ឬការចូលរបស់ម្ចាស់ហាង។ '
         'ការសាកល្បងនៅតែមាននៅលើឧបករណ៍នេះ បើអ្នកចង់ត្រឡប់មកវិញ។',
-      );
-  String get usernameTaken => _(
-        'Another account already uses that username',
-        'គណនីផ្សេងកំពុងប្រើឈ្មោះនេះ',
       );
   String get password => _('Password', 'ពាក្យសម្ងាត់');
   String get adminSignIn => _('Owner / admin sign in', 'ម្ចាស់ហាង ចូលប្រើ');
@@ -128,8 +110,6 @@ class AppText {
   String get tryAgain => _('Try again', 'ព្យាយាមម្តងទៀត');
   String get passwordRule =>
       _('At least 8 characters', 'យ៉ាងតិច ៨ តួអក្សរ');
-  String get resetPin => _('Reset PIN', 'កំណត់លេខសម្ងាត់ឡើងវិញ');
-  String get resetPassword => _('Reset password', 'កំណត់ពាក្យសម្ងាត់ឡើងវិញ');
   String get turnOff => _('Turn off', 'បិទ');
   String get turnOn => _('Turn on', 'បើក');
   String get inactive => _('Turned off', 'បានបិទ');
@@ -141,11 +121,7 @@ class AppText {
       _('Kitchen screen only', 'ផ្ទាំងផ្ទះបាយតែប៉ុណ្ណោះ');
   String get roleCashierDesc =>
       _('Payments and invoices only', 'ការទូទាត់ និងវិក្កយបត្រតែប៉ុណ្ណោះ');
-  String get pinTaken =>
-      _('Another account already uses that PIN', 'គណនីផ្សេងកំពុងប្រើលេខនេះ');
   String get more => _('More', 'ផ្សេងទៀត');
-  String get kitchenView => _('Kitchen screen', 'ផ្ទាំងផ្ទះបាយ');
-  String get cashierView => _('Cashier screen', 'ផ្ទាំងអ្នកគិតលុយ');
   String staffCount(int count) => count == 1
       ? _('1 account', 'គណនី ១')
       : _('$count accounts', 'គណនី $count');
@@ -161,12 +137,10 @@ class AppText {
   String get clear => _('Clear', 'សម្អាត');
   String get remove => _('Remove', 'ដកចេញ');
   String get rename => _('Rename', 'ប្តូរឈ្មោះ');
-  String get confirm => _('Confirm', 'បញ្ជាក់');
   String get total => _('Total', 'សរុប');
   String get subtotal => _('Subtotal', 'សរុបរង');
   String get quantity => _('Quantity', 'ចំនួន');
   String get price => _('Price', 'តម្លៃ');
-  String get optional => _('optional', 'មិនចាំបាច់');
   String get notFound => _('Not found', 'រកមិនឃើញ');
 
   String table(String number) => _('Table $number', 'តុ $number');
@@ -180,16 +154,9 @@ class AppText {
   String get takeaway => _('Takeaway', 'យកទៅផ្ទះ');
   String get orderTypeQuestion =>
       _('Where are you eating?', 'អ្នកនឹងញ៉ាំនៅឯណា?');
-  String get dineInBlurb =>
-      _('Served to your table', 'បម្រើនៅតុរបស់អ្នក');
   String get takeawayBlurb =>
       _('Packed to go, collect at the counter', 'ខ្ចប់យកទៅ ទទួលនៅបញ្ជរ');
-  String get takeawayOrder => _('Takeaway order', 'ការបញ្ជាទិញយកទៅផ្ទះ');
   String get startTakeaway => _('Order takeaway', 'បញ្ជាទិញយកទៅផ្ទះ');
-  String get callByNumber => _(
-        'We will call your order number at the counter.',
-        'យើងនឹងហៅលេខការបញ្ជាទិញរបស់អ្នកនៅបញ្ជរ។',
-      );
 
   // --------------------------------------------------------------- statuses
   String get statusNew => _('New Order', 'ការបញ្ជាទិញថ្មី');
@@ -260,9 +227,13 @@ class AppText {
       );
   String get soldOut => _('SOLD OUT', 'អស់ស្តុក');
   String get unavailable => _('Unavailable', 'អស់ស្តុក');
+
+  /// Shown on a cart line whose dish sold out after it was added.
+  String get soldOutRemoveToOrder => _(
+        'Sold out — remove it to place your order',
+        'អស់ស្តុក — សូមដកចេញដើម្បីបញ្ជាទិញ',
+      );
   String get signature => _('Signature', 'មុខម្ហូបពិសេស');
-  String addedToCart(String name) =>
-      _('$name added to cart', 'បានបន្ថែម $name ទៅកន្ត្រក');
   String off(int percent) => _('$percent% OFF', 'បញ្ចុះ $percent%');
 
   // ------------------------------------------------------------ food detail
@@ -359,8 +330,6 @@ class AppText {
   // ----------------------------------------------------------------- cashier
   String takenToday(String amount) =>
       _('Taken today: $amount', 'ទទួលបានថ្ងៃនេះ៖ $amount');
-  String readyForPayment(int count) =>
-      _('Ready for Payment ($count)', 'រង់ចាំទូទាត់ ($count)');
   String get completed => _('Completed', 'បញ្ចប់');
   String get noPayable =>
       _('No orders waiting to pay', 'មិនមានការបញ្ជាទិញរង់ចាំទូទាត់ទេ');
@@ -382,8 +351,6 @@ class AppText {
 
   // ------------------------------------------------- cashier: live & cancel
   String get liveOrders => _('Live', 'កំពុងដំណើរការ');
-  String get liveOrdersCount =>
-      _('Every order in the restaurant right now', 'ការបញ្ជាទិញទាំងអស់ក្នុងហាងឥឡូវនេះ');
   String get toPay => _('To pay', 'ត្រូវទូទាត់');
   String get closed => _('Closed', 'បានបិទ');
   String get nothingLive => _('Nothing cooking', 'មិនមានអ្វីកំពុងធ្វើទេ');
@@ -402,10 +369,6 @@ class AppText {
   String get keepOrder => _('Keep it', 'រក្សាទុក');
   String orderCancelled(String number) =>
       _('Order #$number cancelled', 'បានលុបការបញ្ជាទិញ #$number');
-  String get cancelTooLate => _(
-        'The kitchen has already started cooking this one.',
-        'ផ្ទះបាយបានចាប់ផ្តើមចម្អិនរួចហើយ។',
-      );
   String cancelledBy(String name) => _('Cancelled by $name', 'លុបដោយ $name');
   String get editItems => _('Edit items', 'កែមុខម្ហូប');
   String get editItemsBody => _(
@@ -431,21 +394,12 @@ class AppText {
 
   // ------------------------------------------------ cashier: order for guest
   String get newOrder => _('New order', 'ការបញ្ជាទិញថ្មី');
-  String get orderForCustomer =>
-      _('Order for a customer', 'បញ្ជាទិញជំនួសអតិថិជន');
-  String get orderForCustomerBody => _(
-        'Take an order at the counter and send it straight to the kitchen.',
-        'ទទួលការបញ្ជាទិញនៅបញ្ជរ ហើយផ្ញើទៅផ្ទះបាយភ្លាម។',
-      );
-  String get whereIsItGoing => _('Where is it going?', 'ទៅកន្លែងណា?');
   String get chooseTable => _('Choose a table', 'ជ្រើសរើសតុ');
   String get pickTableToDineIn => _(
         'Dine-in orders need a table number.',
         'ការបញ្ជាទិញញ៉ាំនៅហាង ត្រូវការលេខតុ។',
       );
   String get noTableChosen => _('No table chosen', 'មិនទាន់ជ្រើសរើសតុ');
-  String get tapDishToAdd =>
-      _('Tap a dish to add it', 'ចុចលើមុខម្ហូបដើម្បីបន្ថែម');
   String get nothingAddedYet => _('Nothing added yet', 'មិនទាន់បន្ថែមអ្វីទេ');
   String get sendToKitchen => _('Send to kitchen', 'ផ្ញើទៅផ្ទះបាយ');
   String orderPlaced(String number) =>
@@ -462,7 +416,6 @@ class AppText {
   String get unpaid => _('Unpaid', 'មិនទាន់ទូទាត់');
   String get thankYou => _('Thank you!', 'សូមអរគុណ!');
   String get invoiceNotFound => _('Invoice not found', 'រកមិនឃើញវិក្កយបត្រ');
-  String get discountLine => _('Discount', 'បញ្ចុះតម្លៃ');
 
   // ----------------------------------------------------------------- report
   String get report => _('Report', 'របាយការណ៍');
@@ -519,7 +472,6 @@ class AppText {
   String usedOf(int used, int limit) => _('$used of $limit used', 'ប្រើ $used ក្នុង $limit');
   String usedUnlimited(int used) => _('$used used', 'ប្រើ $used');
   String get onThisPlan => _('You are on this plan', 'អ្នកកំពុងប្រើគម្រោងនេះ');
-  String get planLimitReached => _('Plan limit reached', 'ដល់ដែនកំណត់គម្រោង');
   String get howToUpgrade => _(
         'Billing is not built yet. Contact us and we will move your '
         'restaurant onto the plan you want.',
@@ -527,13 +479,11 @@ class AppText {
       );
   String get staffAccounts => _('Staff accounts', 'គណនីបុគ្គលិក');
 
-  String get copy => _('Copy', 'ចម្លង');
   String get whichRestaurant =>
       _('Which restaurant is this device for?', 'ឧបករណ៍នេះសម្រាប់ហាងណា?');
   String deviceSetUpFor(String name) =>
       _('This device is set up for $name', 'ឧបករណ៍នេះសម្រាប់ $name');
   String get changeRestaurant => _('Change', 'ប្តូរ');
-  String get copied => _('Copied', 'បានចម្លង');
 
   // -------------------------------------------------------- asking to upgrade
   String get upgradeNeeded => _('Time for a bigger plan', 'ដល់ពេលប្តូរគម្រោងធំជាង');
@@ -584,11 +534,8 @@ class AppText {
   String get settings => _('Settings', 'ការកំណត់');
 
   // --------------------------------------------------------- admin dashboard
-  String get todaysSummary => _("Today's summary", 'សង្ខេបថ្ងៃនេះ');
   String get revenue => _('Revenue', 'ចំណូល');
   String get pending => _('Pending', 'កំពុងរង់ចាំ');
-  String get recentOrders => _('Recent orders', 'ការបញ្ជាទិញថ្មីៗ');
-  String get noOrdersToday => _('No orders yet today.', 'មិនទាន់មានការបញ្ជាទិញថ្ងៃនេះទេ។');
   String totalCount(int count) => _('$count in total', 'សរុប $count');
   String get all => _('All', 'ទាំងអស់');
   String get noOrdersHere => _('No orders here', 'មិនមានការបញ្ជាទិញនៅទីនេះទេ');
@@ -606,7 +553,6 @@ class AppText {
   String get dishName => _('Dish name', 'ឈ្មោះមុខម្ហូប');
   String get enterDishName => _('Give the dish a name', 'សូមដាក់ឈ្មោះមុខម្ហូប');
   String get enterPrice => _('Enter a price', 'សូមបញ្ចូលតម្លៃ');
-  String get dishNameKm => _('Dish name (Khmer)', 'ឈ្មោះជាភាសាខ្មែរ');
   String get english => _('English', 'អង់គ្លេស');
   String get khmer => _('Khmer', 'ខ្មែរ');
   String get name => _('Name', 'ឈ្មោះ');
@@ -663,8 +609,6 @@ class AppText {
   String get addCategory => _('Add category', 'បន្ថែមប្រភេទ');
   String get renameCategory => _('Rename category', 'ប្តូរឈ្មោះប្រភេទ');
   String get deleteCategory => _('Delete category', 'លុបប្រភេទ');
-  String get categoryNameKm => _('Name in Khmer', 'ឈ្មោះជាភាសាខ្មែរ');
-  String get categoryHint => _('e.g. Soups', 'ឧ. ស៊ុប');
   String get createCategoryFirst =>
       _('Create a category first', 'សូមបង្កើតប្រភេទជាមុនសិន');
   String get noCategories => _('No categories yet', 'មិនទាន់មានប្រភេទទេ');

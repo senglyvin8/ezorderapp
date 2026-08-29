@@ -74,7 +74,13 @@ class AppStore extends ChangeNotifier {
   OrderType _orderType = OrderType.dineIn;
   List<CartLine> _cart = [];
   String _cartNote = '';
-  final List<String> _sessionOrderIds = [];
+  /// Orders placed from this device.
+  ///
+  /// A Set rather than a list because [myOrders] asks it about every order in
+  /// the restaurant, and [myOrders] runs on every rebuild of the customer
+  /// shell. A list scan there makes that sweep quadratic in the day's trade —
+  /// measurably so by the afternoon.
+  final Set<String> _sessionOrderIds = {};
 
   // ---------------------------------------------------------------- getters
 
@@ -235,33 +241,68 @@ class AppStore extends ChangeNotifier {
     bool isToday(DateTime d) =>
         d.year == now.year && d.month == now.month && d.day == now.day;
 
-    final waiting = _data.orders.where((o) => o.status == OrderStatus.newOrder);
-    final cooking = _data.orders.where((o) => o.status == OrderStatus.cooking);
-    final toServe = _data.orders.where((o) => o.status == OrderStatus.ready);
+    // One pass rather than five. The kitchen board rebuilds on every change
+    // anybody makes to any order, and it was walking the day's whole trade
+    // once per figure it shows.
+    var waiting = 0;
+    var cooking = 0;
+    var toServe = 0;
+    var cookedOrders = 0;
+    var cookedDishes = 0;
 
-    // Anything past the stove counts as cooked, however it was settled.
-    final cooked = _data.orders.where((o) =>
-        isToday(o.createdAt) &&
-        (o.status == OrderStatus.ready ||
-            o.status == OrderStatus.paid ||
-            o.status == OrderStatus.completed));
+    for (final o in _data.orders) {
+      switch (o.status) {
+        case OrderStatus.newOrder:
+          waiting++;
+        case OrderStatus.cooking:
+          cooking++;
+        case OrderStatus.ready:
+          toServe++;
+        case _:
+          break;
+      }
+      // Anything past the stove counts as cooked, however it was settled.
+      if (isToday(o.createdAt) &&
+          (o.status == OrderStatus.ready ||
+              o.status == OrderStatus.paid ||
+              o.status == OrderStatus.completed)) {
+        cookedOrders++;
+        cookedDishes += o.itemCount;
+      }
+    }
 
     return (
-      waiting: waiting.length,
-      cooking: cooking.length,
-      toServe: toServe.length,
-      cookedOrders: cooked.length,
-      cookedDishes: cooked.fold<int>(0, (sum, o) => sum + o.itemCount),
+      waiting: waiting,
+      cooking: cooking,
+      toServe: toServe,
+      cookedOrders: cookedOrders,
+      cookedDishes: cookedDishes,
     );
+  }
+
+  /// Orders inside [range], in no particular order.
+  ///
+  /// The figures do not care what order they are added up in, and the report
+  /// screen asks for them three times over in a single build — once to list,
+  /// once to total, once to rank the dishes. Sorting all three is work nobody
+  /// reads.
+  List<Order> _ordersInUnsorted(ReportRange range) {
+    // The window is the same for every order, so it is worked out once here
+    // rather than rebuilt inside the filter for each one.
+    final now = DateTime.now();
+    final start = range.startedAt(now);
+    final end = range.endedAt(now);
+    return _data.orders
+        .where((o) =>
+            (start == null || !o.createdAt.isBefore(start)) &&
+            (end == null || o.createdAt.isBefore(end)))
+        .toList();
   }
 
   /// Orders inside [range], newest first. The report's one source of truth —
   /// the figures and the export both read this, so they cannot disagree.
   List<Order> ordersIn(ReportRange range) {
-    final now = DateTime.now();
-    final list = _data.orders
-        .where((o) => range.contains(o.createdAt, now: now))
-        .toList()
+    final list = _ordersInUnsorted(range)
       ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
     return list;
   }
@@ -280,7 +321,7 @@ class AppStore extends ChangeNotifier {
     int dishes,
     double average,
   }) summaryFor(ReportRange range) {
-    final orders = ordersIn(range);
+    final orders = _ordersInUnsorted(range);
     final settled = orders
         .where((o) =>
             o.status == OrderStatus.paid || o.status == OrderStatus.completed)
@@ -309,7 +350,7 @@ class AppStore extends ChangeNotifier {
     int limit = 10,
   }) {
     final counts = <String, ({int quantity, double revenue})>{};
-    for (final order in ordersIn(range)) {
+    for (final order in _ordersInUnsorted(range)) {
       if (order.status == OrderStatus.cancelled) continue;
       for (final item in order.items) {
         final current = counts[item.name] ?? (quantity: 0, revenue: 0.0);
@@ -434,7 +475,7 @@ class AppStore extends ChangeNotifier {
         'activeTableId': _activeTableId,
         'cart': _cart.map((e) => e.toJson()).toList(),
         'cartNote': _cartNote,
-        'sessionOrderIds': _sessionOrderIds,
+        'sessionOrderIds': _sessionOrderIds.toList(),
       };
 
   Future<void> _persist() async {

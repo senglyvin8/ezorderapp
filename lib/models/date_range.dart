@@ -34,29 +34,44 @@ class ReportRange {
   /// Resolved against [now] every time it is read, so a board left open
   /// overnight rolls into the new day rather than freezing on the old one.
   bool contains(DateTime when, {DateTime? now}) {
-    final today = _startOfDay(now ?? DateTime.now());
-    return switch (preset) {
-      ReportPreset.today => !when.isBefore(today),
-      // Monday to now. weekday is 1 for Monday, so this lands on the Monday of
-      // the current week whatever day it is read.
-      ReportPreset.week =>
-        !when.isBefore(today.subtract(Duration(days: today.weekday - 1))),
-      ReportPreset.month =>
-        !when.isBefore(DateTime(today.year, today.month)),
-      ReportPreset.all => true,
-      ReportPreset.custom => _withinCustom(when),
-    };
-  }
-
-  bool _withinCustom(DateTime when) {
-    final start = from == null ? null : _startOfDay(from!);
-    // The last moment of the closing day, not its first — a report "to the
-    // 14th" that stopped at midnight on the 14th would omit the whole day.
-    final end = to == null ? null : _startOfDay(to!).add(const Duration(days: 1));
+    final at = now ?? DateTime.now();
+    final start = startedAt(at);
+    final end = endedAt(at);
     if (start != null && when.isBefore(start)) return false;
     if (end != null && !when.isBefore(end)) return false;
     return true;
   }
+
+  /// The first moment inside this window, or null when it reaches back
+  /// forever.
+  ///
+  /// Split out from [contains] so a caller filtering a list can work the
+  /// boundary out once instead of once per row. It used to build a `DateTime`
+  /// for every order it looked at — including for [ReportPreset.all], where
+  /// the answer is yes whatever the date.
+  DateTime? startedAt(DateTime now) => switch (preset) {
+        ReportPreset.all => null,
+        ReportPreset.today => _startOfDay(now),
+        // Monday to now. weekday is 1 for Monday, so this lands on the Monday
+        // of the current week whatever day it is read.
+        ReportPreset.week => _mondayOf(_startOfDay(now)),
+        ReportPreset.month => DateTime(now.year, now.month),
+        ReportPreset.custom => from == null ? null : _startOfDay(from!),
+      };
+
+  /// The first moment past this window, or null when it runs up to now.
+  ///
+  /// Only a custom range closes: the presets all end at the present moment,
+  /// and an order cannot have been placed after it.
+  DateTime? endedAt(DateTime now) {
+    if (preset != ReportPreset.custom || to == null) return null;
+    // The last moment of the closing day, not its first — a report "to the
+    // 14th" that stopped at midnight on the 14th would omit the whole day.
+    return _startOfDay(to!).add(const Duration(days: 1));
+  }
+
+  static DateTime _mondayOf(DateTime day) =>
+      day.subtract(Duration(days: day.weekday - 1));
 
   static DateTime _startOfDay(DateTime d) => DateTime(d.year, d.month, d.day);
 

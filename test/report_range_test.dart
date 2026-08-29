@@ -120,4 +120,59 @@ void main() {
       expect(back.to, DateTime(2026, 8, 14));
     });
   });
+
+  /// The window a range covers, worked out once rather than per row.
+  ///
+  /// `contains` is now written in terms of these two, so they carry the same
+  /// meaning it always had — and a caller filtering a thousand orders asks for
+  /// the boundary once instead of rebuilding a DateTime for every one.
+  group('the window a range covers', () {
+    // A Wednesday.
+    final now = DateTime(2026, 8, 12, 14, 30);
+
+    test('today starts at midnight this morning', () {
+      const range = ReportRange(ReportPreset.today);
+      expect(range.startedAt(now), DateTime(2026, 8, 12));
+      expect(range.endedAt(now), isNull, reason: 'runs up to now');
+    });
+
+    test('this week starts on Monday', () {
+      const range = ReportRange(ReportPreset.week);
+      final monday = range.startedAt(now)!;
+      expect(monday, DateTime(2026, 8, 10));
+      expect(monday.weekday, DateTime.monday);
+    });
+
+    test('a Monday is its own start of week, not the one before', () {
+      const range = ReportRange(ReportPreset.week);
+      expect(range.startedAt(DateTime(2026, 8, 10, 9)), DateTime(2026, 8, 10));
+    });
+
+    test('this month starts on the first', () {
+      expect(const ReportRange(ReportPreset.month).startedAt(now),
+          DateTime(2026, 8));
+    });
+
+    test('all time has no edges at all', () {
+      const range = ReportRange(ReportPreset.all);
+      expect(range.startedAt(now), isNull);
+      expect(range.endedAt(now), isNull);
+    });
+
+    test('a custom range closes at the end of its last day', () {
+      final range = ReportRange(ReportPreset.custom,
+          from: DateTime(2026, 8, 3, 18), to: DateTime(2026, 8, 5, 2));
+      expect(range.startedAt(now), DateTime(2026, 8, 3));
+      // The 6th at midnight: the whole of the 5th is inside.
+      expect(range.endedAt(now), DateTime(2026, 8, 6));
+      expect(range.contains(DateTime(2026, 8, 5, 23, 59), now: now), isTrue);
+      expect(range.contains(DateTime(2026, 8, 6, 0, 1), now: now), isFalse);
+    });
+
+    test('a half-open custom range only bounds the end it was given', () {
+      final open = ReportRange(ReportPreset.custom, to: DateTime(2026, 8, 5));
+      expect(open.startedAt(now), isNull);
+      expect(open.endedAt(now), DateTime(2026, 8, 6));
+    });
+  });
 }

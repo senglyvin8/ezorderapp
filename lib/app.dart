@@ -11,6 +11,7 @@ import 'screens/customer/customer_root.dart';
 import 'screens/kitchen/kitchen_root.dart';
 import 'screens/table_entry_page.dart';
 import 'models/staff_account.dart';
+import 'models/table_link.dart';
 import 'theme/app_theme.dart';
 import 'widgets/guest_banner.dart';
 import 'widgets/session_bar.dart';
@@ -73,17 +74,13 @@ class RestaurantApp extends StatelessWidget {
   /// `/order/demo/table/05` (and the equivalent `/restaurant/demo/table/05`).
   /// Anything else lands on the demo shell.
   Route<dynamic> _onGenerateRoute(RouteSettings settings) {
-    final uri = Uri.parse(settings.name ?? '/');
-    final segments = uri.pathSegments;
-    final isTableLink = segments.length == 4 &&
-        (segments[0] == 'order' || segments[0] == 'restaurant') &&
-        segments[2] == 'table';
+    final link = TableLink.parse(settings.name);
 
     return MaterialPageRoute<void>(
       settings: settings,
-      builder: (_) => isTableLink
-          ? TableEntryPage(tableNumber: segments[3])
-          : const AppShell(),
+      builder: (_) => link == null
+          ? const AppShell()
+          : TableEntryPage(tableNumber: link.tableNumber),
     );
   }
 }

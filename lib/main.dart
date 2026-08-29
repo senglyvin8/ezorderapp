@@ -12,6 +12,7 @@ import 'data/backend/supabase_backend.dart';
 import 'data/guest_mode.dart';
 import 'data/merchant_binding.dart';
 import 'l10n/app_text.dart';
+import 'models/table_link.dart';
 import 'screens/auth/merchant_bind_screen.dart';
 import 'theme/app_theme.dart';
 import 'widgets/app_chrome.dart';
@@ -72,7 +73,16 @@ class _BootstrapState extends State<Bootstrap> {
       if (BackendConfig.hasProject && !_guest) {
         await _initSupabase();
         _binding = await MerchantBinding.read();
-        BackendConfig.bindSlug(_binding?.slug);
+        // A diner has no binding and never will: they scanned a sticker on a
+        // table, on their own phone, and will not be typing a merchant ID to
+        // read a menu. The slug in that link is the restaurant, so it stands
+        // in for a binding — otherwise the one person the QR code exists for
+        // is met by a device-setup screen.
+        //
+        // The binding still wins where there is one, and the scanned slug is
+        // deliberately never saved: a tablet belongs to whoever set it up, not
+        // to the last QR code somebody happened to scan on it.
+        BackendConfig.bindSlug(_binding?.slug ?? TableLink.ofLaunch()?.slug);
         if (!BackendConfig.hasRestaurant) {
           // Nothing to open yet, and that is not an error — it is a device
           // nobody has set up. Ask, rather than reporting a failure.

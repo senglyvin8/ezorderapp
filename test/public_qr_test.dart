@@ -86,4 +86,16 @@ void main() {
       expect(tester.takeException(), isNull);
     });
   }
+
+  testWidgets('the scan names the restaurant and the table on arrival',
+      (tester) async {
+    final store = await boot(tester, '/order/${BackendConfig.slug}/table/05');
+
+    // Both are what a diner needs to know they are in the right place before
+    // they order: whose menu this is, and which table it will be brought to.
+    expect(find.text(store.restaurantDisplayName), findsWidgets,
+        reason: 'the merchant name');
+    expect(find.text(store.text.table('05')), findsWidgets,
+        reason: 'the table the sticker named');
+  });
 }

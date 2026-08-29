@@ -7,6 +7,7 @@ import 'package:restaurant_qr_ordering/app.dart';
 import 'package:restaurant_qr_ordering/config/backend_config.dart';
 import 'package:restaurant_qr_ordering/data/app_store.dart';
 import 'package:restaurant_qr_ordering/models/restaurant_table.dart';
+import 'package:restaurant_qr_ordering/models/table_link.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 /// What happens when a diner points a camera at a printed sticker.
@@ -123,6 +124,45 @@ void main() {
 
       final segments = Uri.parse(table.deepLinkPath).pathSegments;
       expect(segments, ['order', BackendConfig.slug, 'table', '05']);
+    });
+  });
+
+  group('taking a scanned link apart', () {
+    test('reads the restaurant and the table out of it', () {
+      final link = TableLink.parse('/order/riverside/table/07');
+      expect(link, isNotNull);
+      expect(link!.slug, 'riverside');
+      expect(link.tableNumber, '07');
+    });
+
+    test('accepts the older /restaurant/ form some codes still carry', () {
+      expect(TableLink.parse('/restaurant/riverside/table/07')?.slug,
+          'riverside');
+    });
+
+    test('a slug is matched case-insensitively, as a URL may be typed', () {
+      expect(TableLink.parse('/order/RiverSide/table/07')?.slug, 'riverside');
+    });
+
+    test('anything that is not a table link is not one', () {
+      for (final route in <String?>[
+        null,
+        '/',
+        '/order',
+        '/order/riverside',
+        '/order/riverside/table',
+        '/order/riverside/table/07/extra',
+        '/menu/riverside/table/07',
+        '/order/riverside/booth/07',
+      ]) {
+        expect(TableLink.parse(route), isNull, reason: 'route: $route');
+      }
+    });
+
+    test('a link naming no restaurant opens nobody\'s restaurant', () {
+      // Better to fall through to the app than to guess whose menu this is.
+      expect(TableLink.parse('/order//table/07'), isNull);
+      expect(TableLink.parse('/order/riverside/table/'), isNull);
     });
   });
 }

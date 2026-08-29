@@ -28,6 +28,24 @@ enum AppMode { customer, staff }
 /// Virtual category id for the "Popular" tab on the customer menu.
 const String kPopularCategoryId = 'popular';
 
+/// How long a note may be, in characters.
+///
+/// "No onion, please" is sixteen. This is generous for anything a diner
+/// actually needs to say and bounded for everything downstream: a note is
+/// printed on a kitchen ticket, carried in the order payload, and shown on a
+/// card that has to keep its shape. Nothing else in the app takes free text
+/// from a stranger, so this is the one place it can arrive unbounded.
+const int kMaxNoteLength = 200;
+
+/// Trimmed, and cut to [kMaxNoteLength]. Cut rather than refused: somebody who
+/// pastes an essay into the note field should still get their food.
+String clampNote(String note) {
+  final clean = note.trim();
+  return clean.length <= kMaxNoteLength
+      ? clean
+      : clean.substring(0, kMaxNoteLength).trimRight();
+}
+
 /// Single source of truth for the whole app.
 ///
 /// It owns two quite different things, and keeping them apart is what lets the
@@ -686,7 +704,7 @@ class AppStore extends ChangeNotifier {
     if (quantity < 1) {
       throw StateError('Choose at least one ${item.name}');
     }
-    final cleanNote = (note ?? '').trim();
+    final cleanNote = clampNote(note ?? '');
     final unitPrice = item.effectivePrice;
     final existing = _cart.indexWhere(
       (l) =>
@@ -726,7 +744,7 @@ class AppStore extends ChangeNotifier {
   }
 
   void setCartLineNote(String lineId, String note) {
-    final clean = note.trim();
+    final clean = clampNote(note);
     _cart = _cart
         .map((l) => l.id == lineId
             ? l.copyWith(note: clean, clearNote: clean.isEmpty)
@@ -741,7 +759,7 @@ class AppStore extends ChangeNotifier {
   }
 
   void setCartNote(String note) {
-    _cartNote = note;
+    _cartNote = clampNote(note);
     _commit(notify: false, persist: false);
   }
 

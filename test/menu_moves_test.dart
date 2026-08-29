@@ -211,4 +211,42 @@ void main() {
       expect(tester.takeException(), isNull, reason: 'cart line overflowed');
     });
   }
+
+  group('a note nobody can print', () {
+    test('a very long note is cut, not refused', () async {
+      final item = store.menuItem('food-01')!;
+      store.addToCart(item, note: 'x' * 5000);
+
+      final note = store.cart.single.note!;
+      expect(note.length, kMaxNoteLength,
+          reason: 'a kitchen ticket has to keep its shape');
+
+      // Cut, not rejected: the diner still gets their food.
+      final order = await store.submitOrder();
+      expect(order.items.single.note!.length, kMaxNoteLength);
+    });
+
+    test('a note that fits is left exactly alone', () {
+      store.addToCart(store.menuItem('food-01')!, note: 'No onion, please');
+      expect(store.cart.single.note, 'No onion, please');
+    });
+
+    test('surrounding whitespace never counts toward the limit', () {
+      store.addToCart(store.menuItem('food-01')!, note: '   no ice   ');
+      expect(store.cart.single.note, 'no ice');
+    });
+
+    test('the whole-order note is bounded the same way', () async {
+      store.addToCart(store.menuItem('food-01')!);
+      store.setCartNote('y' * 5000);
+      final order = await store.submitOrder();
+      expect(order.customerNote!.length, kMaxNoteLength);
+    });
+
+    test('a line note edited after the fact is bounded too', () {
+      store.addToCart(store.menuItem('food-01')!);
+      store.setCartLineNote(store.cart.single.id, 'z' * 5000);
+      expect(store.cart.single.note!.length, kMaxNoteLength);
+    });
+  });
 }

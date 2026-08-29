@@ -25,8 +25,6 @@ class AppText {
 
   String _(String en, String km) => lang == AppLanguage.km ? km : en;
 
-  bool get isKhmer => lang == AppLanguage.km;
-
   // ------------------------------------------------------------ roles / demo
   String get roleKitchen => _('Kitchen', 'ផ្ទះបាយ');
   String get roleCashier => _('Cashier', 'អ្នកគិតលុយ');

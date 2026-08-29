@@ -506,6 +506,7 @@ class _BasketSheet extends StatelessWidget {
                   TextField(
                     controller: note,
                     maxLines: 2,
+                    maxLength: kMaxNoteLength,
                     decoration: appInput(
                       label: t.orderNote,
                       hint: t.orderNoteHint,

@@ -61,6 +61,7 @@ class _CartScreenState extends State<CartScreen> {
           controller: controller,
           autofocus: true,
           maxLines: 3,
+          maxLength: kMaxNoteLength,
           decoration: appInput(hint: t.noteHintShort),
         ),
         actions: [
@@ -185,6 +186,7 @@ class _CartScreenState extends State<CartScreen> {
                   TextField(
                     controller: _orderNote,
                     maxLines: 2,
+                    maxLength: kMaxNoteLength,
                     onChanged: store.setCartNote,
                     decoration: appInput(hint: t.orderNoteHint),
                   ),

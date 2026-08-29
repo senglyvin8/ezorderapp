@@ -56,6 +56,16 @@ class RestaurantApp extends StatelessWidget {
         );
       },
       onGenerateRoute: _onGenerateRoute,
+      // A scanned sticker is one destination, not a trail.
+      //
+      // Flutter's default reads `/order/demo/table/05` as a path to walk and
+      // builds a route for every prefix of it — `/`, `/order`, `/order/demo`,
+      // `/order/demo/table` — leaving the diner on the menu with four dead
+      // screens stacked underneath, and the transitions fighting each other
+      // hard enough to throw during layout. Nobody navigated through those
+      // screens; they pointed a camera at a table.
+      onGenerateInitialRoutes: (initialRoute) =>
+          [_onGenerateRoute(RouteSettings(name: initialRoute))],
     );
   }
 

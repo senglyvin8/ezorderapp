@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
@@ -260,6 +262,104 @@ void main() {
 
       expect(s.hasPendingOrders, isFalse);
       expect(find.text(s.text.ordersSent(1)), findsWidgets);
+    });
+  });
+
+  group('sending without being asked', () {
+    /// Pumps just the bar, with a connection we control. The real one listens
+    /// to the device, which a test has no way to unplug.
+    Future<(AppStore, _FlakyBackend, StreamController<void>)> pumpBar(
+        WidgetTester tester) async {
+      SharedPreferences.setMockInitialValues({});
+      final net = _FlakyBackend();
+      final s = AppStore(backend: net);
+      addTearDown(s.dispose);
+      await s.load();
+      s.openTable(s.tableByNumber('05')!.id);
+
+      final reconnects = StreamController<void>.broadcast();
+      addTearDown(reconnects.close);
+
+      tester.view.devicePixelRatio = 1.0;
+      tester.view.physicalSize = const Size(420, 900);
+      addTearDown(tester.view.reset);
+
+      await tester.pumpWidget(ChangeNotifierProvider<AppStore>.value(
+        value: s,
+        child: MaterialApp(
+          home: Scaffold(
+            body: PendingOrdersBar(reconnects: reconnects.stream),
+          ),
+        ),
+      ));
+      await tester.pumpAndSettle();
+      return (s, net, reconnects);
+    }
+
+    testWidgets('the network coming back sends what was waiting',
+        (tester) async {
+      final (s, net, reconnects) = await pumpBar(tester);
+
+      s.addToCart(s.menuItem('food-01')!);
+      net.offline = true;
+      await expectLater(s.submitOrder(), throwsA(isA<OrderHeldOffline>()));
+      await tester.pumpAndSettle();
+      expect(s.pendingOrderCount, 1);
+
+      net.offline = false;
+      reconnects.add(null);
+      await tester.pumpAndSettle();
+
+      expect(s.hasPendingOrders, isFalse,
+          reason: 'nobody should have to press anything');
+    });
+
+    testWidgets('a reconnect while still unreachable changes nothing',
+        (tester) async {
+      // The router is back but the line is not. connectivity_plus cannot tell
+      // the difference, so the order has to survive a hopeful retry.
+      final (s, net, reconnects) = await pumpBar(tester);
+
+      s.addToCart(s.menuItem('food-01')!);
+      net.offline = true;
+      await expectLater(s.submitOrder(), throwsA(isA<OrderHeldOffline>()));
+      await tester.pumpAndSettle();
+
+      reconnects.add(null);
+      await tester.pumpAndSettle();
+
+      expect(s.pendingOrderCount, 1, reason: 'still held, not lost');
+    });
+
+    testWidgets('coming back to the app sends what was waiting',
+        (tester) async {
+      // A phone asleep in a pocket while the wifi returned reports no
+      // connectivity change at all when it wakes.
+      final (s, net, reconnects) = await pumpBar(tester);
+      reconnects.stream.listen((_) {});
+
+      s.addToCart(s.menuItem('food-01')!);
+      net.offline = true;
+      await expectLater(s.submitOrder(), throwsA(isA<OrderHeldOffline>()));
+      await tester.pumpAndSettle();
+
+      net.offline = false;
+      tester.binding
+          .handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+      await tester.pumpAndSettle();
+
+      expect(s.hasPendingOrders, isFalse);
+    });
+
+    testWidgets('a reconnect with nothing waiting is a no-op', (tester) async {
+      final (s, _, reconnects) = await pumpBar(tester);
+      final before = s.orders.length;
+
+      reconnects.add(null);
+      await tester.pumpAndSettle();
+
+      expect(s.orders.length, before);
+      expect(tester.takeException(), isNull);
     });
   });
 }

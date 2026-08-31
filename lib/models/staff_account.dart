@@ -68,7 +68,19 @@ class StaffAccount {
   bool get hasLocalSecret => salt.isNotEmpty && secretHash.isNotEmpty;
   final bool active;
 
-  bool get usesPassword => role == StaffRole.admin;
+  /// Whether this person signs in with an address and a password rather than
+  /// by tapping their name and keying in a PIN.
+  ///
+  /// Decided by whether they have an address, not by their role. A PIN pad is
+  /// the right answer for a tablet on the counter that five people share all
+  /// shift; it is the wrong one for a cashier with their own phone, who would
+  /// otherwise have to be told the merchant ID before the app could even show
+  /// them a list of names to tap.
+  ///
+  /// Owners are included whether or not they have an address, because the ones
+  /// created before addresses existed sign in with a username.
+  bool get usesPassword =>
+      role == StaffRole.admin || email.trim().isNotEmpty;
 
   /// Only meaningful on the demo backend. A Supabase-backed account has no
   /// secret here to check against, so this is always false — the answer comes

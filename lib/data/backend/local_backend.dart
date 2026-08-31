@@ -310,23 +310,30 @@ class LocalBackend implements Backend {
         'Upgrade to add more.',
       );
     }
-    if (role != StaffRole.admin && secret.length != StaffAccount.pinLength) {
-      throw StateError('A PIN must be ${StaffAccount.pinLength} digits');
+    final address = EmailAddress.normalize(email);
+
+    // Which of the two this account is, decided by whether an address was
+    // given rather than by role. Somebody with their own phone gets an address
+    // and a password; somebody sharing the counter tablet gets a PIN.
+    if (address == null && email.trim().isNotEmpty) {
+      throw StateError('That does not look like an email address');
+    }
+    if (address != null) {
+      if (secret.trim().length < 8) {
+        throw StateError('A password must be at least 8 characters');
+      }
+    } else if (role != StaffRole.admin) {
+      if (secret.length != StaffAccount.pinLength) {
+        throw StateError('A PIN must be ${StaffAccount.pinLength} digits');
+      }
     }
 
-    final address = EmailAddress.normalize(email);
     if (role == StaffRole.admin) {
       // An owner signs in with an address, so there has to be one. The older
       // username form is still accepted for the accounts that already have it,
       // which is why this is not simply "an admin needs an email".
       if (address == null && username.trim().isEmpty) {
         throw StateError('An owner needs an email address to sign in with');
-      }
-      if (address == null && email.trim().isNotEmpty) {
-        throw StateError('That does not look like an email address');
-      }
-      if (secret.trim().length < 8) {
-        throw StateError('A password must be at least 8 characters');
       }
     }
 

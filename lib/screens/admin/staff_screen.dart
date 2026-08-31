@@ -235,6 +235,7 @@ class _StaffEditorState extends State<_StaffEditor> {
     _email = TextEditingController(text: widget.account?.email ?? '');
     _secret = TextEditingController();
     _role = widget.account?.role ?? StaffRole.kitchen;
+    _ownPhone = widget.account?.usesPassword ?? true;
   }
 
   @override
@@ -246,7 +247,17 @@ class _StaffEditorState extends State<_StaffEditor> {
   }
 
   bool get _isNew => widget.account == null;
-  bool get _needsPassword => _role == StaffRole.admin;
+
+  /// Whether this person signs in with an address and a password rather than by
+  /// tapping their name and keying in a PIN.
+  ///
+  /// The owner's choice, per person, because it is really a question about the
+  /// device: a phone somebody carries, or the tablet on the counter that the
+  /// whole shift shares. An owner is always the first — there is no PIN pad on
+  /// a screen nobody has reached yet.
+  bool _ownPhone = true;
+
+  bool get _needsPassword => _role == StaffRole.admin || _ownPhone;
 
   void _save(AppStore store) {
     if (!(_formKey.currentState?.validate() ?? false)) return;
@@ -338,6 +349,27 @@ class _StaffEditorState extends State<_StaffEditor> {
                               : null,
                         ),
                       ),
+                    // Only meaningful for staff. An owner types an address
+                    // whatever device they are on.
+                    if (_isNew && _role != StaffRole.admin) ...[
+                      const SizedBox(height: 18),
+                      SectionLabel(t.howTheySignIn),
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 8),
+                        child: _SignInOption(
+                          label: t.ownPhone,
+                          description: t.ownPhoneDesc,
+                          selected: _ownPhone,
+                          onTap: () => setState(() => _ownPhone = true),
+                        ),
+                      ),
+                      _SignInOption(
+                        label: t.sharedTablet,
+                        description: t.sharedTabletDesc,
+                        selected: !_ownPhone,
+                        onTap: () => setState(() => _ownPhone = false),
+                      ),
+                    ],
                     if (_needsPassword) ...[
                       const SizedBox(height: 10),
                       TextFormField(
@@ -406,6 +438,74 @@ class _StaffEditorState extends State<_StaffEditor> {
                 ),
               ),
             ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// One of the two ways a member of staff can sign in.
+///
+/// Deliberately the same card as the role picker above it: they are two
+/// questions of the same kind, asked one after the other, and answering them
+/// should feel like one decision rather than two mechanisms.
+class _SignInOption extends StatelessWidget {
+  const _SignInOption({
+    required this.label,
+    required this.description,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final String label;
+  final String description;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: selected ? AppColors.brandTint : AppColors.surface,
+      borderRadius: BorderRadius.circular(AppRadius.control),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(AppRadius.control),
+        child: Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(AppRadius.control),
+            border: Border.all(
+              color: selected ? AppColors.brand : AppColors.border,
+              width: selected ? 1.6 : 1,
+            ),
+          ),
+          child: Row(
+            children: [
+              Icon(
+                selected
+                    ? Icons.phone_iphone_rounded
+                    : Icons.tablet_mac_rounded,
+                size: 19,
+                color: AppColors.inkSoft,
+              ),
+              const SizedBox(width: 11),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(label,
+                        style: const TextStyle(
+                            fontSize: 15.5, fontWeight: FontWeight.w600)),
+                    const SizedBox(height: 1),
+                    Text(description, style: AppType.label),
+                  ],
+                ),
+              ),
+              if (selected)
+                const Icon(Icons.check_circle_rounded,
+                    size: 20, color: AppColors.brand),
+            ],
           ),
         ),
       ),

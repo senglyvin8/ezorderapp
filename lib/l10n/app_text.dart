@@ -185,6 +185,20 @@ class AppText {
   String get pin => _('PIN', 'លេខសម្ងាត់');
   String get newPin => _('New PIN', 'លេខសម្ងាត់ថ្មី');
   String get newPassword => _('New password', 'ពាក្យសម្ងាត់ថ្មី');
+  String get howTheySignIn => _('How they sign in', 'របៀបចូលប្រើ');
+  String get ownPhone => _('Their own phone', 'ទូរស័ព្ទផ្ទាល់ខ្លួន');
+  String get ownPhoneDesc => _(
+        'An email and a password. They sign in once and the app finds your '
+        'restaurant.',
+        'អ៊ីមែល និងពាក្យសម្ងាត់។ ចូលម្តង រួចកម្មវិធីនឹងរកឃើញហាងរបស់អ្នក។',
+      );
+  String get sharedTablet => _('A shared device', 'ឧបករណ៍រួម');
+  String get sharedTabletDesc => _(
+        'A 6-digit PIN. They tap their name on the counter tablet — quicker '
+        'when several people swap all shift.',
+        'លេខសម្ងាត់ ៦ ខ្ទង់។ ចុចលើឈ្មោះនៅលើថេប្លេតបញ្ជរ — លឿនជាង '
+        'ពេលមានមនុស្សច្រើនប្តូរវេនគ្នា។',
+      );
   String get pinRule => _('6 digits', 'លេខ ៦ តួ');
   String get checking => _('Checking…', 'កំពុងពិនិត្យ…');
   String get cannotReachRestaurant => _(

@@ -527,6 +527,13 @@ class AppStore extends ChangeNotifier {
     return result;
   }
 
+  /// Reads the restaurant again. What a pull-to-refresh is wired to.
+  Future<void> refresh() async {
+    await _backend.refresh();
+    _data = _backend.current;
+    _commit(persist: false);
+  }
+
   Future<void> resetDemoData() => _mutate(() => _backend.resetDemoData());
 
   String _uid(String prefix) {

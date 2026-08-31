@@ -6,6 +6,7 @@ import '../../l10n/app_text.dart';
 import '../../models/order.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/app_chrome.dart';
+import '../../widgets/refresh_button.dart';
 import '../../widgets/card_grid.dart';
 import '../../widgets/order_ticket.dart';
 import '../../widgets/work_alert.dart';
@@ -59,6 +60,7 @@ class KitchenRoot extends StatelessWidget {
           title: t.kitchen,
           subtitle: '${t.ordersInProgress(working.length)}  ·  '
               '${t.dishesCount(dishesWaiting)}',
+          actions: const [RefreshButton(), SizedBox(width: 4)],
           bottom: PreferredSize(
             preferredSize: const Size.fromHeight(56 + 74),
             child: Container(

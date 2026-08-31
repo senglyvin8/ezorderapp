@@ -329,6 +329,15 @@ class SupabaseBackend implements Backend {
     }
   }
 
+  @override
+  Future<void> refresh() => _guard(() async {
+        // Re-reading is not enough on its own: if the socket died, it is still
+        // dead afterwards and the next change would be missed too. Take the
+        // subscription with it.
+        await _reload();
+        await _resubscribe();
+      });
+
   Future<void> _reload() async {
     if (_restaurantId == null) return;
     final restaurant = await _client

@@ -105,7 +105,7 @@ class AppShell extends StatefulWidget {
   State<AppShell> createState() => _AppShellState();
 }
 
-class _AppShellState extends State<AppShell> {
+class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
   StreamSubscription<void>? _recovery;
 
   /// True from the moment a recovery link is followed until a new password is
@@ -122,6 +122,7 @@ class _AppShellState extends State<AppShell> {
       if (mounted) setState(() => _settingNewPassword = true);
     });
     unawaited(_lookUpRequest());
+    WidgetsBinding.instance.addObserver(this);
   }
 
   /// Asks whether this device belongs to somebody waiting on an application.
@@ -144,8 +145,24 @@ class _AppShellState extends State<AppShell> {
     }
   }
 
+  /// Coming back to the app is the moment the board is most likely to be
+  /// wrong. Everything after the first load arrives over a websocket, and a
+  /// phone that has been asleep in a pocket has almost certainly lost it —
+  /// silently, so the board looks fine while showing an old shift.
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state != AppLifecycleState.resumed) return;
+    final store = context.read<AppStore>();
+    if (!store.isSignedIn || store.isDemo) return;
+    unawaited(store.refresh().catchError((_) {
+      // Still no connection. The board keeps what it had, which is the best
+      // available answer, and the refresh button is there to try again.
+    }));
+  }
+
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     unawaited(_recovery?.cancel());
     super.dispose();
   }

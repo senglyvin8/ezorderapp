@@ -7,6 +7,7 @@ import '../../l10n/status_label.dart';
 import '../../models/order.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/app_chrome.dart';
+import '../../widgets/refresh_button.dart';
 import '../../widgets/card_grid.dart';
 import '../../widgets/order_ticket.dart';
 import '../../widgets/report_panel.dart';
@@ -133,6 +134,7 @@ class _CashierRootState extends State<CashierRoot> {
           automaticallyImplyLeading: false,
           title: t.roleCashier,
           subtitle: t.takenToday(store.money(takings)),
+          actions: const [RefreshButton(), SizedBox(width: 4)],
           bottom: PreferredSize(
             preferredSize: const Size.fromHeight(52),
             child: Container(

@@ -136,6 +136,17 @@ abstract class Backend {
   /// backend cannot report incrementally.
   Future<RestaurantData> load();
 
+  /// Reads the restaurant again, now.
+  ///
+  /// Everything after the first load arrives by [changes], which is a
+  /// websocket, and a websocket on a phone in a kitchen does not stay up: it
+  /// sleeps in a pocket, moves between access points, and comes back without
+  /// saying it went. Until this existed the only way to find out what had
+  /// happened meanwhile was to restart the app.
+  ///
+  /// Safe to call at any time, and safe to call often.
+  Future<void> refresh();
+
   /// The data as the backend last saw it. Read straight after a mutation, so
   /// the screen that triggered it repaints without waiting for a round trip
   /// it has already made.

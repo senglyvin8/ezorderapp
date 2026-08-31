@@ -206,6 +206,7 @@ class AppText {
   String get roleCashierDesc =>
       _('Payments and invoices only', 'ការទូទាត់ និងវិក្កយបត្រតែប៉ុណ្ណោះ');
   String get more => _('More', 'ផ្សេងទៀត');
+  String get refresh => _('Refresh', 'ធ្វើឱ្យស្រស់');
   String staffCount(int count) => count == 1
       ? _('1 account', 'គណនី ១')
       : _('$count accounts', 'គណនី $count');

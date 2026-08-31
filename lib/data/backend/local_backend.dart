@@ -103,6 +103,12 @@ class LocalBackend implements Backend {
     return current;
   }
 
+  /// Nothing else is writing to this device, so there is never anything new to
+  /// read. Harmless, and it keeps the screens from having to know which
+  /// backend they are talking to.
+  @override
+  Future<void> refresh() async {}
+
   void _seedDemo() {
     _accounts = DemoData.accounts();
     _currentUserId = null;

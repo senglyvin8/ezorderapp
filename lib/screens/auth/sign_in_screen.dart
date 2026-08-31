@@ -245,10 +245,25 @@ class _StaffPicker extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        SectionLabel(t.chooseYourName),
+        // Nothing to tap unless somebody has been given a PIN, so do not ask
+        // them to choose a name that is not there.
+        SectionLabel(accounts.isEmpty ? t.noStaffYet : t.chooseYourName),
         if (accounts.isEmpty)
           AppCard(
-            child: Text(t.staffSubtitle, style: AppType.body),
+            // The old text here was the Staff screen's subtitle — a section
+            // label, which told whoever was stuck precisely nothing. This says
+            // who can fix it and how.
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Icon(Icons.info_outline_rounded,
+                    size: 18, color: AppColors.inkFaint),
+                const SizedBox(width: 9),
+                Expanded(
+                  child: Text(t.noStaffYetBody, style: AppType.body),
+                ),
+              ],
+            ),
           )
         else
           AppCard(

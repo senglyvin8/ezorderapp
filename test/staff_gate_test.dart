@@ -6,6 +6,9 @@ import 'package:provider/provider.dart';
 import 'package:restaurant_qr_ordering/app.dart';
 import 'package:restaurant_qr_ordering/config/backend_config.dart';
 import 'package:restaurant_qr_ordering/data/app_store.dart';
+import 'package:restaurant_qr_ordering/data/backend/backend.dart';
+import 'package:restaurant_qr_ordering/data/backend/local_backend.dart';
+import 'package:restaurant_qr_ordering/models/staff_account.dart';
 import 'package:restaurant_qr_ordering/data/demo_data.dart';
 import 'package:restaurant_qr_ordering/screens/auth/sign_in_screen.dart';
 import 'package:restaurant_qr_ordering/screens/auth/sign_up_screen.dart';
@@ -161,4 +164,47 @@ void main() {
     expect(store.language, isNot(before));
     expect(tester.takeException(), isNull);
   });
+
+  testWidgets('a restaurant with no PIN staff says so, and says who fixes it',
+      (tester) async {
+    // A brand new restaurant has an owner and nobody else. The picker used to
+    // show the Staff screen's subtitle here, which told whoever was stuck
+    // nothing at all.
+    SharedPreferences.setMockInitialValues({});
+    final store = AppStore(backend: _NoPinStaff());
+    addTearDown(store.dispose);
+    await store.load();
+
+    tester.view.devicePixelRatio = 1.0;
+    tester.view.physicalSize = const Size(420, 900);
+    addTearDown(tester.view.reset);
+    await tester.pumpWidget(ChangeNotifierProvider<AppStore>.value(
+      value: store,
+      child: const RestaurantApp(),
+    ));
+    await tester.pumpAndSettle();
+
+    expect(store.pinAccounts, isEmpty);
+    expect(find.text(store.text.noStaffYet), findsOneWidget);
+    expect(find.text(store.text.noStaffYetBody), findsOneWidget);
+    expect(find.text(store.text.chooseYourName), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+}
+
+/// A restaurant whose only account is its owner — what every one looks like on
+/// the day it is approved.
+class _NoPinStaff extends LocalBackend {
+  @override
+  bool get isDemo => false;
+
+  @override
+  Future<RestaurantData> load() async {
+    final data = await super.load();
+    return data.copyWith(
+      accounts: data.accounts
+          .where((a) => a.role == StaffRole.admin)
+          .toList(),
+    );
+  }
 }

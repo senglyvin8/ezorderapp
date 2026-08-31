@@ -38,6 +38,13 @@ class AppText {
   String get customerView => _('Customer view', 'ទិដ្ឋភាពអតិថិជន');
   String get myWorkspace => _('My workspace', 'កន្លែងធ្វើការ');
   String get chooseYourName => _('Tap your name', 'ចុចលើឈ្មោះរបស់អ្នក');
+  String get noStaffYet => _('No staff yet', 'មិនទាន់មានបុគ្គលិកទេ');
+  String get noStaffYetBody => _(
+        'Nobody here has a PIN yet. The owner adds staff from '
+        'Manage → Staff — or sign in below with an email and password.',
+        'មិនទាន់មានអ្នកណាមានលេខសម្ងាត់ទេ។ ម្ចាស់ហាងបន្ថែមបុគ្គលិកនៅ '
+        'គ្រប់គ្រង → បុគ្គលិក — ឬចូលខាងក្រោមដោយអ៊ីមែល និងពាក្យសម្ងាត់។',
+      );
   String get enterPin => _('Enter your PIN', 'បញ្ចូលលេខសម្ងាត់');
   String get wrongPin => _('Wrong PIN, try again', 'លេខសម្ងាត់ខុស សូមព្យាយាមម្តងទៀត');
   String get wrongPassword =>

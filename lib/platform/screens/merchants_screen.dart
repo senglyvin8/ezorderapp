@@ -8,6 +8,7 @@ import '../merchant.dart';
 import '../platform_store.dart';
 import 'merchant_sheet.dart';
 import 'new_merchant_sheet.dart';
+import 'applications_screen.dart';
 import 'requests_screen.dart';
 
 /// Every restaurant on the platform.
@@ -58,6 +59,21 @@ class _MerchantsScreenState extends State<MerchantsScreen> {
         title: 'Merchants',
         subtitle: store.signedInAs,
         actions: [
+          // Ahead of the upgrade queue on purpose. A merchant waiting on a
+          // bigger plan is already yours; somebody waiting to join has not
+          // decided yet, and is the one who goes elsewhere.
+          IconButton(
+            tooltip: 'Sign-up requests',
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(
+                  builder: (_) => const ApplicationsScreen()),
+            ),
+            icon: Badge(
+              isLabelVisible: store.openApplicationCount > 0,
+              label: Text('${store.openApplicationCount}'),
+              child: const Icon(Icons.storefront_rounded),
+            ),
+          ),
           IconButton(
             tooltip: 'Upgrade requests',
             onPressed: () => Navigator.of(context).push(

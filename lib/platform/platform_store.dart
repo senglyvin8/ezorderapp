@@ -5,6 +5,7 @@ import '../models/merchant_code.dart';
 import '../models/plan.dart';
 import '../models/upgrade_request.dart';
 import 'merchant.dart';
+import 'signup_queue.dart';
 import 'upgrade_queue.dart';
 
 /// State for the operator console.
@@ -21,6 +22,7 @@ class PlatformStore extends ChangeNotifier {
 
   List<Merchant> _merchants = [];
   List<UpgradeTicket> _requests = [];
+  List<SignUpApplication> _applications = [];
   bool _loading = false;
   String? _error;
 
@@ -29,6 +31,15 @@ class PlatformStore extends ChangeNotifier {
   /// The upgrade queue: merchants who have asked to be moved onto a bigger
   /// plan. Open ones first, oldest first within that.
   List<UpgradeTicket> get requests => List.unmodifiable(_requests);
+
+  /// Restaurants asking to join, newest answered last and the waiting ones
+  /// first — the database orders it that way.
+  List<SignUpApplication> get applications => List.unmodifiable(_applications);
+
+  List<SignUpApplication> get openApplications =>
+      _applications.where((a) => a.status.isOpen).toList();
+
+  int get openApplicationCount => openApplications.length;
 
   List<UpgradeTicket> get openRequests =>
       _requests.where((r) => r.isOpen).toList();
@@ -164,11 +175,27 @@ class PlatformStore extends ChangeNotifier {
           .map((r) => Merchant.fromRow(r as Map<String, dynamic>))
           .toList();
       _requests = await _loadRequests();
+      _applications = await _loadApplications();
     } catch (error) {
       _error = _clean(error);
     } finally {
       _loading = false;
       notifyListeners();
+    }
+  }
+
+  /// The same forgiveness as the upgrade queue: a project that has not run
+  /// 0015 has no applications table, and the console must keep working for
+  /// everything else rather than refusing to open.
+  Future<List<SignUpApplication>> _loadApplications() async {
+    try {
+      final rows =
+          await _client.rpc<List<dynamic>>('platform_signup_requests');
+      return rows
+          .map((r) => SignUpApplication.fromRow(r as Map<String, dynamic>))
+          .toList();
+    } catch (_) {
+      return const [];
     }
   }
 
@@ -209,6 +236,27 @@ class PlatformStore extends ChangeNotifier {
             'p_status': status.wire,
             'p_note': note,
           }));
+
+  /// Says yes. Creates the restaurant, makes the applicant its owner, and
+  /// gives it five tables to print QR codes for.
+  Future<void> approveApplication(SignUpApplication application) =>
+      _run(() async {
+        await _client.rpc<String>('platform_approve_signup',
+            params: {'p_id': application.id});
+      });
+
+  /// Says no, with a reason the applicant will read. Their account stays, so
+  /// they can sign in and see why rather than finding it stopped working.
+  Future<void> rejectApplication(
+    SignUpApplication application,
+    String reason,
+  ) =>
+      _run(() async {
+        await _client.rpc<void>('platform_reject_signup', params: {
+          'p_id': application.id,
+          'p_reason': reason.trim(),
+        });
+      });
 
   Future<void> setSuspended(Merchant merchant, bool suspended) => _run(() =>
       _client.rpc<void>('platform_set_suspended', params: {

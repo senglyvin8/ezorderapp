@@ -28,6 +28,7 @@ class MerchantBindScreen extends StatefulWidget {
     required this.text,
     required this.signIn,
     required this.onBound,
+    this.byCode,
     this.onGuest,
     this.current,
   });
@@ -36,6 +37,13 @@ class MerchantBindScreen extends StatefulWidget {
 
   /// Signs an owner in and reports which restaurant they run.
   final MerchantSignIn signIn;
+
+  /// Finds a restaurant from its merchant ID.
+  ///
+  /// The staff door. A cashier has a PIN and no password, and no business
+  /// knowing the owner's, so signing in as the owner cannot be how they set
+  /// their own phone up. Null on a build where there is nothing to look up.
+  final MerchantByCode? byCode;
 
   final void Function(MerchantBinding binding) onBound;
 
@@ -55,14 +63,48 @@ class MerchantBindScreen extends StatefulWidget {
 class _MerchantBindScreenState extends State<MerchantBindScreen> {
   final TextEditingController _email = TextEditingController();
   final TextEditingController _password = TextEditingController();
+  final TextEditingController _code = TextEditingController();
   bool _busy = false;
   String? _error;
 
+  /// Which door is showing. Staff outnumber owners on any given day, but the
+  /// owner is the one setting a device up for the first time, so that is what
+  /// opens.
+  bool _staffDoor = false;
+
   @override
   void dispose() {
+    _code.dispose();
     _email.dispose();
     _password.dispose();
     super.dispose();
+  }
+
+  Future<void> _byCode() async {
+    final lookUp = widget.byCode;
+    if (lookUp == null) return;
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
+    try {
+      final found = await lookUp(_code.text);
+      if (!mounted) return;
+      if (found == null) {
+        setState(() {
+          _busy = false;
+          _error = widget.text.noSuchMerchant;
+        });
+        return;
+      }
+      widget.onBound(found);
+    } on StateError catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _busy = false;
+        _error = error.message;
+      });
+    }
   }
 
   Future<void> _signIn() async {
@@ -126,24 +168,39 @@ class _MerchantBindScreenState extends State<MerchantBindScreen> {
                 ),
               ),
               const SizedBox(height: 10),
-              Text(t.ownerSignInBlurb,
+              Text(_staffDoor ? t.staffSetUpBlurb : t.ownerSignInBlurb,
                   textAlign: TextAlign.center, style: AppType.body),
               const SizedBox(height: 22),
-              TextField(
-                controller: _email,
-                autocorrect: false,
-                enableSuggestions: false,
-                keyboardType: TextInputType.emailAddress,
-                textInputAction: TextInputAction.next,
-                decoration: appInput(label: t.emailAddress),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: _password,
-                obscureText: true,
-                onSubmitted: _busy ? null : (_) => _signIn(),
-                decoration: appInput(label: t.password),
-              ),
+              if (_staffDoor)
+                TextField(
+                  controller: _code,
+                  autocorrect: false,
+                  enableSuggestions: false,
+                  autofocus: true,
+                  textCapitalization: TextCapitalization.characters,
+                  onSubmitted: _busy ? null : (_) => _byCode(),
+                  decoration: appInput(
+                    label: t.merchantId,
+                    hint: 'EZ-4K7Q2M',
+                  ),
+                )
+              else ...[
+                TextField(
+                  controller: _email,
+                  autocorrect: false,
+                  enableSuggestions: false,
+                  keyboardType: TextInputType.emailAddress,
+                  textInputAction: TextInputAction.next,
+                  decoration: appInput(label: t.emailAddress),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: _password,
+                  obscureText: true,
+                  onSubmitted: _busy ? null : (_) => _signIn(),
+                  decoration: appInput(label: t.password),
+                ),
+              ],
               if (_error != null) ...[
                 const SizedBox(height: 10),
                 Text(
@@ -158,12 +215,32 @@ class _MerchantBindScreenState extends State<MerchantBindScreen> {
               ],
               const SizedBox(height: 16),
               FilledButton(
-                onPressed: _busy ? null : _signIn,
+                onPressed:
+                    _busy ? null : (_staffDoor ? _byCode : _signIn),
                 style: FilledButton.styleFrom(
                   minimumSize: const Size(double.infinity, 52),
                 ),
-                child: Text(t.signIn),
+                child: Text(_staffDoor ? t.findRestaurant : t.signIn),
               ),
+              // The other door. Staff have a PIN and no password; an owner
+              // setting up their own phone has both and no need for the ID.
+              if (widget.byCode != null) ...[
+                const SizedBox(height: 8),
+                TextButton(
+                  onPressed: _busy
+                      ? null
+                      : () => setState(() {
+                            _staffDoor = !_staffDoor;
+                            _error = null;
+                          }),
+                  style: TextButton.styleFrom(
+                    foregroundColor: AppColors.inkSoft,
+                    minimumSize: const Size(double.infinity, 44),
+                  ),
+                  child: Text(
+                      _staffDoor ? t.imTheOwner : t.imStaffWithAnId),
+                ),
+              ],
               // Neither an account nor a restaurant: somebody deciding whether
               // the product is any good. Turning them away at the door is a
               // strange way to sell anything.

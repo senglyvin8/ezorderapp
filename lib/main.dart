@@ -12,6 +12,7 @@ import 'data/backend/supabase_backend.dart';
 import 'data/guest_mode.dart';
 import 'data/merchant_binding.dart';
 import 'l10n/app_text.dart';
+import 'models/merchant_code.dart';
 import 'models/table_link.dart';
 import 'screens/auth/merchant_bind_screen.dart';
 import 'theme/app_theme.dart';
@@ -186,6 +187,7 @@ class _BootstrapState extends State<Bootstrap> {
             // default, same as the failure screen below.
             text: const AppText(Brand.defaultLanguage),
             signIn: signInAsOwner,
+            byCode: merchantByCode,
             onGuest: _enterGuest,
             onBound: _bind,
             current: _binding,
@@ -274,6 +276,29 @@ Future<Backend> _openBackend({bool guest = false}) async {
   // for one visitor to spoil for the next.
   if (guest || !BackendConfig.usesSupabase) return LocalBackend();
   return SupabaseBackend(Supabase.instance.client);
+}
+
+/// Looks a restaurant up by the merchant ID printed on it.
+///
+/// Reads nothing but the name and logo, which is all the setup screen shows,
+/// and grants nothing: knowing a restaurant exists is not being able to do
+/// anything to it. Every screen past this still asks who you are.
+Future<MerchantBinding?> merchantByCode(String code) async {
+  final normalised = MerchantCode.normalize(code);
+  if (normalised == null) return null;
+  try {
+    final rows = await Supabase.instance.client
+        .rpc<List<dynamic>>('restaurant_by_code', params: {'p_code': normalised});
+    if (rows.isEmpty) return null;
+    final row = rows.first as Map<String, dynamic>;
+    return MerchantBinding(
+      slug: row['slug'] as String,
+      name: row['name'] as String? ?? '',
+      logo: row['logo'] as String? ?? '🍽️',
+    );
+  } catch (error) {
+    throw StateError('Could not reach the service. $error');
+  }
 }
 
 /// Signs an owner in and works out which restaurant they run.

@@ -63,6 +63,19 @@ class AppText {
         'restaurant this device is for.',
         'ចូលដោយអ៊ីមែល និងពាក្យសម្ងាត់របស់អ្នក យើងនឹងដឹងថាឧបករណ៍នេះសម្រាប់ហាងណា។',
       );
+  String get merchantId => _('Merchant ID', 'លេខសម្គាល់ហាង');
+  String get staffSetUpBlurb => _(
+        'Ask the owner for the restaurant\'s merchant ID. You will still need '
+        'your own name and PIN to sign in.',
+        'សូមសុំលេខសម្គាល់ហាងពីម្ចាស់ហាង។ អ្នកនៅតែត្រូវប្រើឈ្មោះ '
+        'និងលេខសម្ងាត់ផ្ទាល់ខ្លួនដើម្បីចូល។',
+      );
+  String get findRestaurant => _('Find the restaurant', 'រកហាង');
+  String get noSuchMerchant =>
+      _('No restaurant has that ID', 'គ្មានហាងណាមានលេខសម្គាល់នេះទេ');
+  String get imStaffWithAnId =>
+      _('I am staff — I have a merchant ID', 'ខ្ញុំជាបុគ្គលិក — ខ្ញុំមានលេខសម្គាល់ហាង');
+  String get imTheOwner => _('I am the owner', 'ខ្ញុំជាម្ចាស់ហាង');
   String get tryAsGuest => _('Try it as a guest', 'សាកល្បងជាភ្ញៀវ');
   String get tryAsGuestBlurb => _(
         'No account needed. You get a restaurant of your own to play with — '

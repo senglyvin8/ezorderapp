@@ -98,3 +98,14 @@ class RebindDevice {
 /// either. Null means the credentials were wrong.
 typedef MerchantSignIn = Future<MerchantBinding?> Function(
     String email, String password);
+
+/// Finds a restaurant from the merchant ID an owner read down the phone.
+///
+/// The door for staff. A cashier has a PIN and no password, and no business
+/// knowing the owner's — so they cannot use [MerchantSignIn] to set their own
+/// phone up. They type the ID instead, which identifies the restaurant and
+/// grants nothing on its own: what it gets them is a list of names to tap and
+/// a PIN pad, both of which still have to be satisfied.
+///
+/// Null means no restaurant has that ID.
+typedef MerchantByCode = Future<MerchantBinding?> Function(String code);

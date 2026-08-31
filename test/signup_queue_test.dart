@@ -82,4 +82,42 @@ void main() {
     ));
     expect(a.waited.inHours, greaterThanOrEqualTo(29));
   });
+
+  group('splitting the queue by what is still to do', () {
+    // Waiting is a job; approved and turned down are a record. An operator
+    // should be shown the job, not have to find it among the record.
+    final queue = [
+      SignUpApplication.fromRow(row(status: 'PENDING')),
+      SignUpApplication.fromRow(row(status: 'APPROVED', reviewedAt: '2026-08-30T09:00:00Z')),
+      SignUpApplication.fromRow(row(status: 'REJECTED', note: 'Not a real address', reviewedAt: '2026-08-30T09:00:00Z')),
+      SignUpApplication.fromRow(row(status: 'PENDING')),
+    ];
+
+    test('only the waiting ones are a job', () {
+      expect(queue.where((a) => a.status.isOpen).length, 2);
+      expect(queue.where((a) => !a.status.isOpen).length, 2);
+    });
+
+    test('an answered one carries when, and a refusal carries why', () {
+      final refused =
+          queue.firstWhere((a) => a.status == ApplicationStatus.rejected);
+      expect(refused.reviewedAt, isNotNull);
+      expect(refused.note, 'Not a real address');
+
+      final approved =
+          queue.firstWhere((a) => a.status == ApplicationStatus.approved);
+      expect(approved.reviewedAt, isNotNull);
+      expect(approved.note, isEmpty, reason: 'nothing to explain about a yes');
+    });
+
+    test('every field the requester typed survives the trip', () {
+      // The card is the whole basis for the decision: there is nowhere else to
+      // look and no way to ask them a question.
+      final a = queue.first;
+      for (final value in [a.restaurantName, a.slug, a.ownerName, a.email]) {
+        expect(value, isNotEmpty);
+      }
+      expect(a.askedAt, isNotNull);
+    });
+  });
 }

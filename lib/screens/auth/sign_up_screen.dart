@@ -83,7 +83,16 @@ class _SignUpScreenState extends State<SignUpScreen> {
     final value = _slug.text.trim();
     setState(() => _slugFree = null);
     if (value.length < 3) return;
-    final free = await context.read<AppStore>().slugAvailable(value);
+    bool free;
+    try {
+      free = await context.read<AppStore>().slugAvailable(value);
+    } on StateError {
+      // The connection went, or this database has not learned about sign-ups
+      // yet. Either way the honest answer is that we do not know — which
+      // leaves the button disabled rather than letting somebody commit to an
+      // address nobody has checked.
+      return;
+    }
     if (!mounted || _slug.text.trim() != value) return;
     setState(() => _slugFree = free);
   }

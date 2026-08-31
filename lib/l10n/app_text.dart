@@ -226,6 +226,26 @@ class AppText {
         'This category has no dishes at the moment.',
         'ប្រភេទនេះមិនទាន់មានមុខម្ហូបទេ។',
       );
+  /// Shown when an order was taken but the restaurant could not be reached.
+  String get orderHeldTitle =>
+      _('Order saved on your phone', 'បានរក្សាទុកការបញ្ជាទិញ');
+  String get orderHeldBody => _(
+        'The restaurant cannot be reached right now. Your order is safe and '
+        'will be sent as soon as the connection comes back.',
+        'មិនអាចភ្ជាប់ទៅភោជនីយដ្ឋានបានទេឥឡូវនេះ។ ការបញ្ជាទិញរបស់អ្នកត្រូវបានរក្សាទុក '
+        'ហើយនឹងផ្ញើទៅនៅពេលមានសញ្ញាឡើងវិញ។',
+      );
+  String ordersWaiting(int count) => count == 1
+      ? _('1 order waiting to send', 'ការបញ្ជាទិញ ១ រង់ចាំផ្ញើ')
+      : _('$count orders waiting to send', 'ការបញ្ជាទិញ $count រង់ចាំផ្ញើ');
+  String get sendNow => _('Send now', 'ផ្ញើឥឡូវនេះ');
+  String get sending => _('Sending…', 'កំពុងផ្ញើ…');
+  String ordersSent(int count) => count == 1
+      ? _('1 order sent', 'បានផ្ញើការបញ្ជាទិញ ១')
+      : _('$count orders sent', 'បានផ្ញើការបញ្ជាទិញ $count');
+  String get stillOffline =>
+      _('Still no connection', 'នៅតែគ្មានការតភ្ជាប់');
+
   String get soldOut => _('SOLD OUT', 'អស់ស្តុក');
   String get unavailable => _('Unavailable', 'អស់ស្តុក');
 

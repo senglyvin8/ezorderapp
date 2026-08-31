@@ -145,6 +145,7 @@ class Order {
     this.placedBy,
     this.cancelledBy,
     this.cancelledAt,
+    this.clientKey,
   });
 
   final String id;
@@ -172,6 +173,14 @@ class Order {
   /// Who cancelled it, and when. Both null unless [status] is cancelled.
   final String? cancelledBy;
   final DateTime? cancelledAt;
+
+  /// The key the device minted before it first tried to send this order.
+  ///
+  /// Null for anything placed before the outbox existed, and for orders that
+  /// went straight through on a working connection. It exists so that sending
+  /// the same order twice — which a dropped connection makes unavoidable —
+  /// places it once. See `0013_idempotent_orders.sql`.
+  final String? clientKey;
 
   bool get isStaffPlaced => placedBy != null;
 
@@ -210,6 +219,7 @@ class Order {
         placedBy: placedBy,
         cancelledBy: cancelledBy ?? this.cancelledBy,
         cancelledAt: cancelledAt ?? this.cancelledAt,
+        clientKey: clientKey,
       );
 
   Map<String, dynamic> toJson() => {
@@ -229,6 +239,7 @@ class Order {
         if (placedBy != null) 'placedBy': placedBy,
         if (cancelledBy != null) 'cancelledBy': cancelledBy,
         if (cancelledAt != null) 'cancelledAt': cancelledAt!.toIso8601String(),
+        if (clientKey != null) 'clientKey': clientKey,
       };
 
   factory Order.fromJson(Map<String, dynamic> json) => Order(
@@ -254,5 +265,6 @@ class Order {
         cancelledAt: json['cancelledAt'] == null
             ? null
             : DateTime.parse(json['cancelledAt'] as String),
+        clientKey: json['clientKey'] as String?,
       );
 }

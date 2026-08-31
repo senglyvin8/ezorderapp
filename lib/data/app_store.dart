@@ -18,6 +18,7 @@ import '../models/restaurant_table.dart';
 import '../models/staff_account.dart';
 import '../models/upgrade_request.dart';
 import 'backend/backend.dart';
+import 'order_outbox.dart';
 import 'backend/local_backend.dart';
 import 'demo_data.dart';
 
@@ -99,6 +100,11 @@ class AppStore extends ChangeNotifier {
   /// shell. A list scan there makes that sweep quadratic in the day's trade —
   /// measurably so by the afternoon.
   final Set<String> _sessionOrderIds = {};
+
+  /// Orders taken while the restaurant could not be reached. Survives a
+  /// restart, because a phone that runs out of battery mid-service must not
+  /// take the evening's orders with it.
+  final OrderOutbox _outbox = OrderOutbox();
 
   // ---------------------------------------------------------------- getters
 
@@ -423,6 +429,7 @@ class AppStore extends ChangeNotifier {
 
   Future<void> load() async {
     _prefs = await SharedPreferences.getInstance();
+    await _outbox.load();
     final raw = _prefs?.getString(_prefsKey);
     if (raw != null) {
       try {
@@ -773,17 +780,98 @@ class AppStore extends ChangeNotifier {
 
   /// Sends this device's cart to the kitchen.
   Future<Order> submitOrder() async {
-    final order = await _mutate(() => _backend.placeOrder(
-          type: _orderType,
-          tableId: _activeTableId,
-          lines: _cart,
-          note: _cartNote,
-        ));
-    _sessionOrderIds.add(order.id);
+    final key = _uid('key');
+    final lines = [..._cart];
+    final note = _cartNote;
+
+    try {
+      final order = await _mutate(() => _backend.placeOrder(
+            type: _orderType,
+            tableId: _activeTableId,
+            lines: lines,
+            note: note,
+            clientKey: key,
+          ));
+      _sessionOrderIds.add(order.id);
+      _clearCart();
+      return order;
+    } on TransientFailure catch (error) {
+      // The restaurant could not be reached, which is not the same as the
+      // order being refused. Telling somebody who has already chosen their
+      // food to start again is the wrong answer to a dropped connection, so
+      // it is held on the device and sent when the wifi comes back.
+      await _outbox.add(PendingOrder(
+        key: key,
+        type: _orderType,
+        tableId: _activeTableId,
+        lines: lines,
+        note: note,
+        takenAt: DateTime.now(),
+      ));
+      _clearCart();
+      notifyListeners();
+      throw OrderHeldOffline(error.message);
+    }
+  }
+
+  void _clearCart() {
     _cart = [];
     _cartNote = '';
     _commit();
-    return order;
+  }
+
+  // ------------------------------------------------------------- the outbox
+
+  /// Orders taken while the restaurant was unreachable, oldest first.
+  List<PendingOrder> get pendingOrders => _outbox.pending;
+
+  int get pendingOrderCount => _outbox.length;
+
+  bool get hasPendingOrders => !_outbox.isEmpty;
+
+  /// Tries to send everything waiting, oldest first.
+  ///
+  /// Stops at the first one that fails on the network again — if the wifi is
+  /// still down, the rest will fail identically and there is nothing to learn
+  /// from watching them do it. An order the database *refuses* is a different
+  /// matter: it will be refused forever, so it leaves the queue and the reason
+  /// is kept to show.
+  ///
+  /// Returns how many reached the restaurant.
+  Future<int> flushPendingOrders() async {
+    var sent = 0;
+    for (final pending in _outbox.pending) {
+      try {
+        final order = await _mutate(() => _backend.placeOrder(
+              type: pending.type,
+              tableId: pending.tableId,
+              lines: pending.lines,
+              note: pending.note,
+              onBehalfOfCustomer: pending.onBehalfOfCustomer,
+              clientKey: pending.key,
+            ));
+        await _outbox.remove(pending.key);
+        _sessionOrderIds.add(order.id);
+        sent++;
+      } on TransientFailure catch (error) {
+        await _outbox.recordFailure(pending.key, error.message);
+        break;
+      } on StateError catch (error) {
+        // Refused, not unreachable. Retrying a sold-out dish every time the
+        // wifi flickers would never succeed and would hide the reason.
+        await _outbox.recordFailure(pending.key, error.message);
+        await _outbox.remove(pending.key);
+      }
+    }
+    _commit();
+    return sent;
+  }
+
+  /// Gives up on one held order — the customer changed their mind, or it can
+  /// never be sent.
+  Future<void> discardPendingOrder(String key) async {
+    await _outbox.remove(key);
+    _commit();
   }
 
   /// Takes an order at the counter on a customer's behalf.

@@ -82,9 +82,13 @@ class SupabaseBackend implements Backend {
     } on AuthException catch (e) {
       throw StateError(_clean(e.message));
     } on StateError {
+      // Includes TransientFailure, which is already classified.
       rethrow;
     } catch (e) {
-      throw StateError('Could not reach the restaurant’s database. $e');
+      // Postgrest and Auth exceptions are the database answering. Anything
+      // else that gets this far never reached it: a dropped connection, a
+      // timeout, a name that would not resolve. Those are worth retrying.
+      throw TransientFailure('Could not reach the restaurant. $e');
     }
   }
 
@@ -384,6 +388,7 @@ class SupabaseBackend implements Backend {
     required List<CartLine> lines,
     String note = '',
     bool onBehalfOfCustomer = false,
+    String? clientKey,
   }) =>
       _guard(() async {
         if (lines.isEmpty) throw StateError('The cart is empty');
@@ -395,6 +400,7 @@ class SupabaseBackend implements Backend {
           'p_type': type.wire,
           'p_table_id': tableId,
           'p_note': note.trim(),
+          'p_client_key': clientKey,
           'p_items': [
             for (final line in lines)
               {
@@ -845,6 +851,7 @@ class SupabaseBackend implements Backend {
       placedBy: r['placed_by'] as String?,
       cancelledBy: r['cancelled_by'] as String?,
       cancelledAt: _toDate(r['cancelled_at']),
+      clientKey: r['client_key'] as String?,
     );
   }
 

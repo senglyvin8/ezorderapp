@@ -16,6 +16,7 @@ import 'models/staff_account.dart';
 import 'models/table_link.dart';
 import 'theme/app_theme.dart';
 import 'widgets/guest_banner.dart';
+import 'widgets/pending_orders_bar.dart';
 import 'widgets/session_bar.dart';
 
 class RestaurantApp extends StatelessWidget {
@@ -142,6 +143,7 @@ class _AppShellState extends State<AppShell> {
       body: Column(
         children: [
           const GuestBanner(),
+          const PendingOrdersBar(),
           const SessionBar(),
           Expanded(
             child: MediaQuery.removePadding(

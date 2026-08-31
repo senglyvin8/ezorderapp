@@ -399,7 +399,15 @@ class LocalBackend implements Backend {
     required List<CartLine> lines,
     String note = '',
     bool onBehalfOfCustomer = false,
+    String? clientKey,
   }) async {
+    // Mirrors the lookup in place_order() — 0013. Nothing on one device races
+    // itself, but the outbox retries through this path too, and an order that
+    // arrives twice should still be placed once.
+    if (clientKey != null) {
+      final already = _orders.where((o) => o.clientKey == clientKey).firstOrNull;
+      if (already != null) return already;
+    }
     if (onBehalfOfCustomer) {
       _require(_canTakePayment, 'take an order for a customer');
     }
@@ -456,6 +464,7 @@ class LocalBackend implements Backend {
       status: OrderStatus.newOrder,
       createdAt: DateTime.now(),
       placedBy: onBehalfOfCustomer ? currentUser?.name : null,
+      clientKey: clientKey,
     );
 
     _orders = [..._orders, order];

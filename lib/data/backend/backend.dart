@@ -8,6 +8,20 @@ import '../../models/restaurant_table.dart';
 import '../../models/staff_account.dart';
 import '../../models/upgrade_request.dart';
 
+/// A failure worth trying again.
+///
+/// The wifi dropped, the request timed out, DNS went odd mid-service. The
+/// order was not refused — it never arrived. That is a different thing from
+/// the database saying no, and the difference decides whether retrying is
+/// sensible or whether it will fail identically forever.
+///
+/// Deliberately a [StateError]: every screen already catches those and shows
+/// the message, so an unclassified failure still behaves exactly as it did.
+/// Code that wants to queue and retry catches this narrower type instead.
+class TransientFailure extends StateError {
+  TransientFailure(super.message);
+}
+
 /// Everything the restaurant shares: its profile, its menu, its tables, its
 /// orders and who can sign in.
 ///
@@ -129,6 +143,10 @@ abstract class Backend {
     required List<CartLine> lines,
     String note = '',
     bool onBehalfOfCustomer = false,
+    /// Minted on the device before the first attempt and kept across retries,
+    /// so an order sent twice after a dropped connection is placed once. See
+    /// `0013_idempotent_orders.sql`.
+    String? clientKey,
   });
 
   /// Rule 6 — kitchen owns NEW -> COOKING -> READY.

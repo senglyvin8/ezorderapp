@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../data/app_store.dart';
+import '../../data/order_outbox.dart';
 import '../../models/cart_line.dart';
 import '../../models/order.dart';
 import '../../theme/app_theme.dart';
@@ -101,6 +102,38 @@ class _CartScreenState extends State<CartScreen> {
       } else {
         widget.onBrowseMenu();
       }
+    } on OrderHeldOffline {
+      // Their order was taken. It simply has not left the phone yet, and
+      // saying "could not reach the restaurant" would read as a refusal to
+      // somebody who has just finished choosing their food.
+      if (!mounted) return;
+      _orderNote.clear();
+      await showDialog<void>(
+        context: context,
+        builder: (context) => AlertDialog(
+          backgroundColor: AppColors.card,
+          surfaceTintColor: Colors.transparent,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppRadius.card),
+          ),
+          icon: const Icon(Icons.cloud_off_rounded,
+              size: 30, color: AppColors.inkSoft),
+          title: Text(store.text.orderHeldTitle,
+              textAlign: TextAlign.center,
+              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
+          content: Text(store.text.orderHeldBody,
+              textAlign: TextAlign.center, style: AppType.body),
+          actions: [
+            FilledButton(
+              style: FilledButton.styleFrom(minimumSize: const Size(0, 46)),
+              onPressed: () => Navigator.of(context).pop(),
+              child: Text(store.text.done),
+            ),
+          ],
+        ),
+      );
+      if (!mounted) return;
+      widget.onBrowseMenu();
     } on StateError catch (error) {
       if (!mounted) return;
       showToast(context, error.message, error: true);

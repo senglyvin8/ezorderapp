@@ -5,6 +5,7 @@ import '../../data/app_store.dart';
 import '../../models/email_address.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/app_chrome.dart';
+import '../../widgets/language_toggle.dart';
 
 /// Asks for the address to send a recovery link to.
 ///
@@ -204,7 +205,21 @@ class _NewPasswordScreenState extends State<NewPasswordScreen> {
 
     return Scaffold(
       backgroundColor: AppColors.surface,
-      appBar: appTopBar(title: t.chooseNewPassword),
+      appBar: appTopBar(
+        title: t.chooseNewPassword,
+        actions: [
+          Padding(
+            padding: const EdgeInsets.only(right: 8),
+            child: Center(
+              child: LanguageToggle(
+                key: languageToggleKey,
+                language: store.language,
+                onTap: store.toggleLanguage,
+              ),
+            ),
+          ),
+        ],
+      ),
       body: SafeArea(
         child: PageWidth(
           maxWidth: 460,

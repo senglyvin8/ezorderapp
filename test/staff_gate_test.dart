@@ -8,7 +8,9 @@ import 'package:restaurant_qr_ordering/config/backend_config.dart';
 import 'package:restaurant_qr_ordering/data/app_store.dart';
 import 'package:restaurant_qr_ordering/data/demo_data.dart';
 import 'package:restaurant_qr_ordering/screens/auth/sign_in_screen.dart';
+import 'package:restaurant_qr_ordering/screens/auth/sign_up_screen.dart';
 import 'package:restaurant_qr_ordering/screens/customer/qr_entry_screen.dart';
+import 'package:restaurant_qr_ordering/widgets/language_toggle.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 /// Who the app greets when it opens.
@@ -119,5 +121,44 @@ void main() {
 
     expect(store.hasCustomerSession, isTrue);
     expect(find.byType(SignInScreen), findsNothing);
+  });
+
+  /// The switch normally lives in the session bar, which is part of the shell.
+  /// The staff gate shows sign-in *instead of* the shell, so without this a
+  /// Khmer speaker opening the app would meet an English screen with no way
+  /// out of it — and no way past it either.
+  testWidgets('the language switch is reachable before signing in',
+      (tester) async {
+    final store = await pump(tester);
+    expect(find.byType(SignInScreen), findsOneWidget);
+    expect(find.byKey(languageToggleKey), findsOneWidget);
+
+    // Not asserting which language it starts in — that is a brand setting and
+    // the point is that it can be changed from here.
+    final before = store.language;
+    await tester.tap(find.byKey(languageToggleKey));
+    await tester.pumpAndSettle();
+
+    expect(store.language, isNot(before));
+    expect(find.byType(SignInScreen), findsOneWidget,
+        reason: 'switching language should not throw you out of sign-in');
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('and on the sign-up form too', (tester) async {
+    final store = await pump(tester);
+    // The demo has no sign-up offer, so drive the screen directly.
+    await tester.pumpWidget(ChangeNotifierProvider<AppStore>.value(
+      value: store,
+      child: const MaterialApp(home: SignUpScreen()),
+    ));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(languageToggleKey), findsOneWidget);
+    final before = store.language;
+    await tester.tap(find.byKey(languageToggleKey));
+    await tester.pumpAndSettle();
+    expect(store.language, isNot(before));
+    expect(tester.takeException(), isNull);
   });
 }

@@ -5,6 +5,7 @@ import '../data/app_store.dart';
 import '../l10n/app_text.dart';
 import '../screens/auth/sign_in_screen.dart';
 import '../theme/app_theme.dart';
+import 'language_toggle.dart';
 
 /// The bar above every screen: who you are, which view you are in, and the
 /// language switch.
@@ -18,11 +19,6 @@ class SessionBar extends StatelessWidget {
   static const _bar = Color(0xFF0D1017);
   static const _track = Color(0xFF1C212B);
   static const _idle = Color(0xFF98A1B2);
-
-  /// The language mark: a black disc, so it reads as its own thing rather
-  /// than another pill in the row.
-  static const _mark = Color(0xFF000000);
-  static const _markEdge = Color(0xFF2C3342);
 
   @override
   Widget build(BuildContext context) {
@@ -115,7 +111,7 @@ class SessionBar extends StatelessWidget {
                 ),
               ],
               const SizedBox(width: 8),
-              _LanguageToggle(
+              LanguageToggle(
                 key: languageToggleKey,
                 language: store.language,
                 onTap: store.toggleLanguage,
@@ -276,68 +272,3 @@ class _DarkButton extends StatelessWidget {
   }
 }
 
-/// Handle for the language mark, so tests reach it by identity rather than by
-/// whichever glyph the design happens to use.
-const Key languageToggleKey = Key('session-bar-language');
-
-class _LanguageToggle extends StatelessWidget {
-  const _LanguageToggle({
-    super.key,
-    required this.language,
-    required this.onTap,
-  });
-
-  final AppLanguage language;
-  final VoidCallback onTap;
-
-  /// Diameter of the mark. With the bar's padding around it this clears the
-  /// 44pt minimum tap target.
-  static const double _size = 38;
-
-  @override
-  Widget build(BuildContext context) {
-    // A black disc carrying the language's own two characters. It reads as a
-    // mark rather than one more pill in the row, and it says which language
-    // you are in as well as offering the switch — a bare globe would only do
-    // the second.
-    return Semantics(
-      button: true,
-      label: '${language.label} — tap to switch',
-      child: Tooltip(
-        message: language.label,
-        child: Material(
-          color: SessionBar._mark,
-          shape: const CircleBorder(
-            side: BorderSide(color: SessionBar._markEdge),
-          ),
-          clipBehavior: Clip.antiAlias,
-          child: InkWell(
-            onTap: onTap,
-            customBorder: const CircleBorder(),
-            child: SizedBox(
-              width: _size,
-              height: _size,
-              child: Center(
-                child: Text(
-                  language.short,
-                  textAlign: TextAlign.center,
-                  maxLines: 1,
-                  // Khmer is one letter against English's two, and its glyph
-                  // carries more detail — it needs the larger size to weigh
-                  // the same inside the disc.
-                  style: TextStyle(
-                    fontSize: language == AppLanguage.km ? 18 : 13.5,
-                    height: 1.05,
-                    fontWeight: FontWeight.w700,
-                    color: Colors.white,
-                    letterSpacing: -0.2,
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}

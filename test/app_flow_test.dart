@@ -3,7 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
 import 'package:restaurant_qr_ordering/app.dart';
 import 'package:restaurant_qr_ordering/data/app_store.dart';
-import 'package:restaurant_qr_ordering/widgets/session_bar.dart';
+import 'package:restaurant_qr_ordering/widgets/language_toggle.dart';
 import 'package:restaurant_qr_ordering/data/demo_data.dart';
 import 'package:restaurant_qr_ordering/l10n/app_text.dart';
 import 'package:restaurant_qr_ordering/models/order.dart';

@@ -6,6 +6,7 @@ import '../../data/backend/backend.dart';
 import '../../models/email_address.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/app_chrome.dart';
+import '../../widgets/language_toggle.dart';
 
 /// Asking to put a restaurant on the service.
 ///
@@ -142,6 +143,16 @@ class _SignUpScreenState extends State<SignUpScreen> {
               child: Text(t.signIn,
                   style: const TextStyle(color: AppColors.inkSoft)),
             ),
+          Padding(
+            padding: const EdgeInsets.only(right: 8),
+            child: Center(
+              child: LanguageToggle(
+                key: languageToggleKey,
+                language: store.language,
+                onTap: store.toggleLanguage,
+              ),
+            ),
+          ),
         ],
       ),
       body: SafeArea(
@@ -295,11 +306,28 @@ class AwaitingApprovalScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final t = context.watch<AppStore>().text;
+    final store = context.watch<AppStore>();
+    final t = store.text;
     final refused = request.status == SignUpStatus.rejected;
 
     return Scaffold(
       backgroundColor: AppColors.surface,
+      appBar: appTopBar(
+        title: '',
+        automaticallyImplyLeading: false,
+        actions: [
+          Padding(
+            padding: const EdgeInsets.only(right: 8),
+            child: Center(
+              child: LanguageToggle(
+                key: languageToggleKey,
+                language: store.language,
+                onTap: store.toggleLanguage,
+              ),
+            ),
+          ),
+        ],
+      ),
       body: SafeArea(
         child: PageWidth(
           maxWidth: 460,

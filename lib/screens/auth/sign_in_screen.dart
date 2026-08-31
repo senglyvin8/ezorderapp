@@ -9,6 +9,7 @@ import '../../l10n/app_text.dart';
 import '../../models/staff_account.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/app_chrome.dart';
+import '../../widgets/language_toggle.dart';
 
 /// Staff sign-in.
 ///
@@ -125,6 +126,20 @@ class _SignInScreenState extends State<SignInScreen> {
       appBar: appTopBar(
         title: t.staffSignIn,
         subtitle: store.restaurantDisplayName,
+        actions: [
+          // Somebody who cannot read this screen cannot get past it, and the
+          // session bar that normally carries the switch is not up yet.
+          Padding(
+            padding: const EdgeInsets.only(right: 8),
+            child: Center(
+              child: LanguageToggle(
+                key: languageToggleKey,
+                language: store.language,
+                onTap: store.toggleLanguage,
+              ),
+            ),
+          ),
+        ],
       ),
       body: PageWidth(
         maxWidth: 460,

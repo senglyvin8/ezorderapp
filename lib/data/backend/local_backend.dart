@@ -260,6 +260,29 @@ class LocalBackend implements Backend {
   }
 
   @override
+  Future<void> sendSignUpCode(String email) async {
+    throw StateError(
+      'The demo has no email behind it, so there is no code to send.',
+    );
+  }
+
+  @override
+  Future<bool> verifySignUpCode(String email, String code) async => false;
+
+  @override
+  Future<void> claimRestaurant({
+    required String restaurantName,
+    required String slug,
+    String ownerName = '',
+  }) async {
+    // There is exactly one restaurant here and it is already open.
+    throw StateError('The demo restaurant is the only one on this device.');
+  }
+
+  @override
+  Future<bool> slugAvailable(String slug) async => false;
+
+  @override
   Stream<void> get passwordRecovery => const Stream.empty();
 
   @override

@@ -143,6 +143,31 @@ abstract class Backend {
   /// A form that answers that question is a way to find out who banks here.
   Future<void> sendPasswordReset(String email);
 
+  /// Emails a six-digit code to prove somebody owns an address.
+  ///
+  /// The first half of signing up. Creates the account if it is new, which is
+  /// what makes this self-serve — but the account can do nothing until the
+  /// code is typed back, and nothing at all until it claims a restaurant.
+  Future<void> sendSignUpCode(String email);
+
+  /// Types the code back. Returns false when it is wrong or has expired.
+  Future<bool> verifySignUpCode(String email, String code);
+
+  /// Turns a confirmed address into a restaurant, and its owner into staff.
+  ///
+  /// Only after [verifySignUpCode]. The database checks that the session is
+  /// not a diner's anonymous one, that the address is confirmed, and that the
+  /// account does not already work somewhere — see `0015_self_signup.sql`.
+  Future<void> claimRestaurant({
+    required String restaurantName,
+    required String slug,
+    String ownerName = '',
+  });
+
+  /// Whether a slug is well formed and unused. For saying "taken" while
+  /// somebody types rather than after they commit.
+  Future<bool> slugAvailable(String slug);
+
   /// Sets a new password for whoever the recovery link signed in.
   ///
   /// Only meaningful while a recovery session is open — the link in the email

@@ -12,6 +12,7 @@ import 'screens/admin/admin_root.dart';
 import 'screens/cashier/cashier_root.dart';
 import 'screens/auth/password_reset.dart';
 import 'screens/auth/sign_in_screen.dart';
+import 'screens/auth/sign_up_screen.dart';
 import 'screens/customer/customer_root.dart';
 import 'screens/kitchen/kitchen_root.dart';
 import 'screens/table_entry_page.dart';
@@ -135,6 +136,11 @@ class _AppShellState extends State<AppShell> {
   /// a tablet that gets restarted should be asking for a PIN again.
   bool _asCustomer = false;
 
+  /// Set when somebody chooses to set up a restaurant rather than sign in.
+  /// Offered only on a build with a real database behind it — the demo has one
+  /// restaurant and it is already open.
+  bool _signingUp = false;
+
   /// Whether to meet this person with sign-in rather than a menu.
   ///
   /// An installed app is a staff device. Somebody who went to an app store,
@@ -165,8 +171,15 @@ class _AppShellState extends State<AppShell> {
     }
 
     if (_staffGate(store)) {
+      if (_signingUp) {
+        return SignUpScreen(
+          onCancel: () => setState(() => _signingUp = false),
+        );
+      }
       return SignInScreen(
         onBrowseAsCustomer: () => setState(() => _asCustomer = true),
+        onCreateRestaurant:
+            store.isDemo ? null : () => setState(() => _signingUp = true),
       );
     }
 

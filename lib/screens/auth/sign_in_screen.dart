@@ -15,7 +15,16 @@ import '../../widgets/app_chrome.dart';
 /// Kitchen and cashier staff tap their name and key in a PIN — fast on a
 /// shared tablet. The owner uses a username and password.
 class SignInScreen extends StatefulWidget {
-  const SignInScreen({super.key, this.onBrowseAsCustomer});
+  const SignInScreen({
+    super.key,
+    this.onBrowseAsCustomer,
+    this.onCreateRestaurant,
+  });
+
+  /// Offered when this build has a database behind it and this screen is the
+  /// first thing in the app. Null on the demo, which has one restaurant and it
+  /// is already open.
+  final VoidCallback? onCreateRestaurant;
 
   /// Offered only when this screen is the first thing in the app.
   ///
@@ -164,6 +173,19 @@ class _SignInScreenState extends State<SignInScreen> {
                   _error = null;
                 }),
               ),
+            if (widget.onCreateRestaurant != null) ...[
+              const SizedBox(height: 20),
+              const Divider(),
+              const SizedBox(height: 12),
+              OutlinedButton.icon(
+                onPressed: widget.onCreateRestaurant,
+                icon: const Icon(Icons.add_business_rounded, size: 19),
+                label: Text(t.createRestaurant),
+                style: OutlinedButton.styleFrom(
+                  minimumSize: const Size(double.infinity, 50),
+                ),
+              ),
+            ],
             if (widget.onBrowseAsCustomer != null) ...[
               const SizedBox(height: 22),
               TextButton.icon(

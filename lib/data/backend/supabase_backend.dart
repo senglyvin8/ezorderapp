@@ -380,6 +380,66 @@ class SupabaseBackend implements Backend {
       .where((s) => s.event == AuthChangeEvent.passwordRecovery)
       .map((_) {});
 
+  @override
+  Future<void> sendSignUpCode(String email) => _guard(() async {
+        final address = EmailAddress.normalize(email);
+        if (address == null) {
+          throw StateError('That does not look like an email address');
+        }
+        // shouldCreateUser is what makes this signing up rather than signing
+        // in. The account it creates can do nothing until the code comes back
+        // and nothing at all until it claims a restaurant.
+        await _client.auth.signInWithOtp(
+          email: address,
+          shouldCreateUser: true,
+        );
+      });
+
+  @override
+  Future<bool> verifySignUpCode(String email, String code) => _guard(() async {
+        final address = EmailAddress.normalize(email);
+        if (address == null) return false;
+        try {
+          await _client.auth.verifyOTP(
+            email: address,
+            token: code.trim(),
+            type: OtpType.email,
+          );
+        } on AuthException {
+          // Wrong code, expired code, wrong address — one answer for all
+          // three, so none can be told apart by trying.
+          return false;
+        }
+        return _client.auth.currentUser != null;
+      });
+
+  @override
+  Future<void> claimRestaurant({
+    required String restaurantName,
+    required String slug,
+    String ownerName = '',
+  }) =>
+      _guard(() async {
+        await _client.rpc<String>('claim_restaurant', params: {
+          'p_restaurant_name': restaurantName.trim(),
+          'p_slug': slug.trim(),
+          'p_owner_name': ownerName.trim(),
+        });
+        // The device now serves the restaurant it just made.
+        BackendConfig.bindSlug(slug.trim().toLowerCase());
+        _restaurantId = null;
+        await _reload();
+        await _refreshCurrentUser();
+        await _resubscribe();
+      });
+
+  @override
+  Future<bool> slugAvailable(String slug) => _guard(() async {
+        final value = slug.trim().toLowerCase();
+        if (value.isEmpty) return false;
+        return _client.rpc<bool>('slug_available', params: {'p_slug': value});
+      });
+
   Future<StaffAccount?> _signIn(String email, String secret) async {
     try {
       await _client.auth.signInWithPassword(email: email, password: secret);

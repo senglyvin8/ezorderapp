@@ -79,6 +79,35 @@ class AppText {
         'ការសាកល្បងនៅតែមាននៅលើឧបករណ៍នេះ បើអ្នកចង់ត្រឡប់មកវិញ។',
       );
   String get password => _('Password', 'ពាក្យសម្ងាត់');
+  // ------------------------------------------------------------- signing up
+  String get createRestaurant => _('Set up my restaurant', 'បង្កើតហាងរបស់ខ្ញុំ');
+  String get signUpBlurb => _(
+        'Start taking orders in a few minutes. No card, no contract — the free '
+        'plan covers five tables.',
+        'ចាប់ផ្តើមទទួលការបញ្ជាទិញក្នុងពេលប៉ុន្មាននាទី។ មិនត្រូវការកាត ឬកិច្ចសន្យា — '
+        'គម្រោងឥតគិតថ្លៃមានតុ ៥។',
+      );
+  String get sendTheCode => _('Send me a code', 'ផ្ញើលេខកូដមកខ្ញុំ');
+  String codeSentTo(String email) =>
+      _('We sent a six-digit code to $email', 'យើងបានផ្ញើលេខកូដ ៦ ខ្ទង់ទៅ $email');
+  String get theCode => _('The code', 'លេខកូដ');
+  String get wrongCode =>
+      _('That code is wrong or has expired', 'លេខកូដខុស ឬផុតកំណត់');
+  String get resendTheCode => _('Send it again', 'ផ្ញើម្តងទៀត');
+  String get yourName => _('Your name', 'ឈ្មោះរបស់អ្នក');
+  String get webAddress => _('Web address', 'អាសយដ្ឋានគេហទំព័រ');
+  String get webAddressBlurb => _(
+        'This goes in your printed QR codes, so it cannot be changed later '
+        'without reprinting them.',
+        'នេះនឹងស្ថិតនៅក្នុងកូដ QR ដែលបោះពុម្ព ដូច្នេះមិនអាចប្តូរក្រោយបានទេ '
+        'លុះត្រាតែបោះពុម្ពឡើងវិញ។',
+      );
+  String get addressTaken => _('That address is taken', 'អាសយដ្ឋាននេះមានគេប្រើហើយ');
+  String get addressFree => _('Available', 'អាចប្រើបាន');
+  String get openMyRestaurant => _('Open my restaurant', 'បើកហាងរបស់ខ្ញុំ');
+  String get alreadyHaveAccount =>
+      _('I already have an account', 'ខ្ញុំមានគណនីរួចហើយ');
+
   String get forgotPassword =>
       _('Forgotten your password?', 'ភ្លេចពាក្យសម្ងាត់?');
   String get resetPasswordTitle =>

@@ -576,6 +576,34 @@ class AppStore extends ChangeNotifier {
   /// Fires when a recovery link has been opened and a new password is wanted.
   Stream<void> get passwordRecovery => _backend.passwordRecovery;
 
+  // ------------------------------------------------------------- signing up
+
+  /// Emails a six-digit code to prove somebody owns an address.
+  Future<void> sendSignUpCode(String email) => _backend.sendSignUpCode(email);
+
+  /// Types the code back. False when it is wrong or has expired.
+  Future<bool> verifySignUpCode(String email, String code) =>
+      _backend.verifySignUpCode(email, code);
+
+  /// Turns a confirmed address into a restaurant. Signs the owner in on the
+  /// way, because they have just proved who they are twice over.
+  Future<void> claimRestaurant({
+    required String restaurantName,
+    required String slug,
+    String ownerName = '',
+  }) async {
+    await _backend.claimRestaurant(
+      restaurantName: restaurantName,
+      slug: slug,
+      ownerName: ownerName,
+    );
+    _data = _backend.current;
+    _mode = AppMode.staff;
+    _commit();
+  }
+
+  Future<bool> slugAvailable(String slug) => _backend.slugAvailable(slug);
+
   Future<void> signOut() async {
     await _backend.signOut();
     _data = _backend.current;

@@ -395,12 +395,11 @@ class SupabaseBackend implements Backend {
 
         // Only the dish and the quantity are sent. The price is read from the
         // menu inside place_order(), so a patched client cannot invent one.
-        final orderId = await _client.rpc<String>('place_order', params: {
+        final params = <String, dynamic>{
           'p_restaurant_id': _restaurantId,
           'p_type': type.wire,
           'p_table_id': tableId,
           'p_note': note.trim(),
-          'p_client_key': clientKey,
           'p_items': [
             for (final line in lines)
               {
@@ -409,7 +408,8 @@ class SupabaseBackend implements Backend {
                 'note': line.note,
               }
           ],
-        });
+        };
+        final orderId = await _placeOrderRpc(params, clientKey);
 
         final row = await _client
             .from('orders')
@@ -419,6 +419,52 @@ class SupabaseBackend implements Backend {
         await _pushOrders();
         return _orderFrom(row);
       });
+
+  /// Whether this database has the idempotency key from 0013.
+  ///
+  /// Null until the first order tells us. Worked out by asking rather than
+  /// configured, because the app and the schema are deployed separately and
+  /// there is no moment when both are certainly in step.
+  bool? _acceptsClientKey;
+
+  /// Places the order, with duplicate protection if the database has it.
+  ///
+  /// A build newer than its database used to be fatal here: PostgREST resolves
+  /// functions by argument name, so sending `p_client_key` to a schema without
+  /// it does not fall back — it fails to find any function at all, and every
+  /// order in the restaurant is refused. A missed migration should cost a
+  /// feature, not the evening's trade.
+  ///
+  /// So a database that has not caught up loses the protection against sending
+  /// the same order twice and keeps taking orders. The answer is remembered
+  /// for the rest of the session; running the migration takes effect on the
+  /// next launch.
+  Future<String> _placeOrderRpc(
+      Map<String, dynamic> params, String? clientKey) async {
+    if (_acceptsClientKey != false) {
+      try {
+        final id = await _client.rpc<String>(
+          'place_order',
+          params: {...params, 'p_client_key': clientKey},
+        );
+        _acceptsClientKey = true;
+        return id;
+      } on PostgrestException catch (error) {
+        if (!isMissingSignature(error)) rethrow;
+        _acceptsClientKey = false;
+      }
+    }
+    return _client.rpc<String>('place_order', params: params);
+  }
+
+  /// True when PostgREST could not find a function with the arguments sent —
+  /// as opposed to finding it and being refused by it.
+  ///
+  /// The distinction matters: the first is a schema this build is ahead of and
+  /// is worth retrying differently, the second is the database saying no and
+  /// must be passed straight through.
+  static bool isMissingSignature(PostgrestException error) =>
+      error.code == 'PGRST202';
 
   @override
   Future<void> startCooking(String orderId) =>

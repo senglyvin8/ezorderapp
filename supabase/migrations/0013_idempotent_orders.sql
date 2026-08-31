@@ -163,5 +163,7 @@ end $$;
 grant execute on function
   public.place_order(uuid, text, uuid, text, jsonb, text) to anon, authenticated;
 
--- The five-argument form from 0008 is left in place so a client built before
--- this migration keeps working. It simply has no key, and so no protection.
+-- NOTE: the five-argument form from 0008 must NOT be left in place. Two
+-- overloads that differ only by an argument with a default are ambiguous to
+-- PostgREST, and every call using the original five names is refused with
+-- PGRST203 before it reaches any of the rules below. 0014 drops it. Run both.

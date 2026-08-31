@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -7,6 +8,7 @@ import 'data/guest_mode.dart';
 import 'data/merchant_binding.dart';
 import 'screens/admin/admin_root.dart';
 import 'screens/cashier/cashier_root.dart';
+import 'screens/auth/sign_in_screen.dart';
 import 'screens/customer/customer_root.dart';
 import 'screens/kitchen/kitchen_root.dart';
 import 'screens/table_entry_page.dart';
@@ -90,14 +92,50 @@ class RestaurantApp extends StatelessWidget {
 ///
 /// Access is decided here *and* enforced in [AppStore], so a hidden button is
 /// never the only thing keeping a cashier out of the menu editor.
-class AppShell extends StatelessWidget {
+class AppShell extends StatefulWidget {
   const AppShell({super.key});
+
+  @override
+  State<AppShell> createState() => _AppShellState();
+}
+
+class _AppShellState extends State<AppShell> {
+  /// Set when somebody on the sign-in screen says they are a customer.
+  ///
+  /// Staff need the customer view — to demo it, or to order for a walk-in —
+  /// and on an installed build the sign-in screen is the only thing in front
+  /// of them. It lasts until the app is reopened, which is the right lifetime:
+  /// a tablet that gets restarted should be asking for a PIN again.
+  bool _asCustomer = false;
+
+  /// Whether to meet this person with sign-in rather than a menu.
+  ///
+  /// An installed app is a staff device. Somebody who went to an app store,
+  /// downloaded this and opened it is a member of staff or an owner — a diner
+  /// never installs anything, they point a camera at a table.
+  ///
+  /// The web build is the opposite and must stay that way: it is what the QR
+  /// codes open, so it belongs to the diner. Meeting a takeaway customer with
+  /// a password box would break the one thing the product is for. A scanned
+  /// link is already past this either way, because it opens a table and so
+  /// starts a customer session before the shell is built.
+  bool _staffGate(AppStore store) =>
+      !kIsWeb &&
+      !store.isSignedIn &&
+      !store.hasCustomerSession &&
+      !_asCustomer;
 
   @override
   Widget build(BuildContext context) {
     final store = context.watch<AppStore>();
     final user = store.currentUser;
     final staffMode = store.mode == AppMode.staff && user != null;
+
+    if (_staffGate(store)) {
+      return SignInScreen(
+        onBrowseAsCustomer: () => setState(() => _asCustomer = true),
+      );
+    }
 
     return Scaffold(
       backgroundColor: AppColors.surface,

@@ -49,6 +49,15 @@ void main() {
     await tester.pumpAndSettle();
   }
 
+  /// Steps past the staff sign-in the installed app now opens on.
+  ///
+  /// `flutter test` is a non-web build, so the shell greets it as a staff
+  /// device. Tests about the diner's side take the same door staff take.
+  Future<void> browseAsCustomer(WidgetTester tester, AppStore store) async {
+    await tester.tap(find.text(store.text.browseAsCustomer));
+    await tester.pumpAndSettle();
+  }
+
   Future<AppStore> pumpApp(
     WidgetTester tester, {
     Size? size,
@@ -273,6 +282,7 @@ void main() {
         (tester) async {
       final store = await pumpApp(tester);
       final t = store.text;
+      await browseAsCustomer(tester, store);
 
       expect(find.text(t.browsingAsCustomer), findsOneWidget);
       expect(find.text(t.kitchen), findsNothing);
@@ -285,8 +295,7 @@ void main() {
       final store = await pumpApp(tester);
       final t = store.text;
 
-      await tester.tap(find.byIcon(Icons.lock_open_rounded));
-      await tester.pumpAndSettle();
+      // The installed app opens here; nothing to tap to get in.
       expect(find.text(t.chooseYourName), findsOneWidget);
 
       final kitchen =
@@ -308,8 +317,6 @@ void main() {
 
     testWidgets('a wrong PIN keeps the door shut', (tester) async {
       final store = await pumpApp(tester);
-      await tester.tap(find.byIcon(Icons.lock_open_rounded));
-      await tester.pumpAndSettle();
 
       final kitchen =
           store.accounts.firstWhere((a) => a.role == StaffRole.kitchen);
@@ -347,7 +354,8 @@ void main() {
       expect(find.text(store.text.dashboard), findsWidgets);
     });
 
-    testWidgets('signing out returns to the customer app', (tester) async {
+    testWidgets('signing out puts the device back behind sign-in',
+        (tester) async {
       final store = await pumpApp(tester);
       await signIn(tester, store, StaffRole.cashier);
       await tester.pumpAndSettle();
@@ -356,7 +364,9 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(store.isSignedIn, isFalse);
-      expect(find.text(store.text.browsingAsCustomer), findsOneWidget);
+      // A till whose cashier has gone home should ask for a PIN, not sit on
+      // the diner's menu waiting for anybody to pick it up.
+      expect(find.text(store.text.chooseYourName), findsOneWidget);
     });
   });
 
@@ -365,6 +375,7 @@ void main() {
         (tester) async {
       final store = await pumpApp(tester);
       final t = store.text;
+      await browseAsCustomer(tester, store);
 
       await tester.tap(find.text(t.startTakeaway));
       await tester.pumpAndSettle();

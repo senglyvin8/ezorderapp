@@ -66,9 +66,23 @@ void main() {
     });
   });
 
+  /// Entering guest mode signs the visitor in as the demo owner — that is what
+  /// the bootstrap does, so that they land behind the owner's desk rather than
+  /// at a diner's table. These do the same, or the installed app's sign-in
+  /// screen would be in front of everything they are checking.
+  Future<AppStore> pumpGuest(WidgetTester tester) async {
+    final store = await pump(tester, guest: true);
+    final pending = store.signInWithPassword(
+        DemoData.adminEmail, DemoData.adminPassword);
+    await tester.pumpAndSettle();
+    expect(await pending, isTrue);
+    await tester.pumpAndSettle();
+    return store;
+  }
+
   group('what a guest sees', () {
     testWidgets('a standing reminder that none of it is real', (tester) async {
-      final store = await pump(tester, guest: true);
+      final store = await pumpGuest(tester);
       final t = store.text;
 
       expect(find.text(t.guestMode), findsOneWidget);
@@ -77,7 +91,7 @@ void main() {
     });
 
     testWidgets('and the menu underneath it, working', (tester) async {
-      final store = await pump(tester, guest: true);
+      final store = await pumpGuest(tester);
       // The demo is the whole product, not a screenshot of it: a real menu
       // from the seeded restaurant, orderable.
       expect(store.menuItems, isNotEmpty);
@@ -86,7 +100,7 @@ void main() {
 
     testWidgets('leaving is asked about, not done on the first tap',
         (tester) async {
-      final store = await pump(tester, guest: true);
+      final store = await pumpGuest(tester);
       final t = store.text;
 
       await tester.tap(find.text(t.leaveGuestMode).first);

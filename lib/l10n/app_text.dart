@@ -83,6 +83,9 @@ class AppText {
   String get demoCredentials =>
       _('Demo accounts', 'គណនីសាកល្បង');
   String signedInAs(String name) => _('Signed in as $name', 'ចូលជា $name');
+  /// The way out of the sign-in screen for staff who want the diner's view.
+  String get browseAsCustomer =>
+      _('Browse as a customer', 'មើលជាអតិថិជន');
   String get browsingAsCustomer =>
       _('Browsing as a customer', 'កំពុងមើលជាអតិថិជន');
 

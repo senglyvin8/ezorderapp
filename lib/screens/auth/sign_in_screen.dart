@@ -14,7 +14,15 @@ import '../../widgets/app_chrome.dart';
 /// Kitchen and cashier staff tap their name and key in a PIN — fast on a
 /// shared tablet. The owner uses a username and password.
 class SignInScreen extends StatefulWidget {
-  const SignInScreen({super.key});
+  const SignInScreen({super.key, this.onBrowseAsCustomer});
+
+  /// Offered only when this screen is the first thing in the app.
+  ///
+  /// Staff need the customer view — to show somebody how it works, or to read
+  /// the menu while taking an order at the counter — and on an installed build
+  /// there is nothing else on screen to reach it from. Null when the screen was
+  /// pushed from the session bar, which already has that door.
+  final VoidCallback? onBrowseAsCustomer;
 
   @override
   State<SignInScreen> createState() => _SignInScreenState();
@@ -52,6 +60,17 @@ class _SignInScreenState extends State<SignInScreen> {
     setState(() => _pin = _pin.substring(0, _pin.length - 1));
   }
 
+  /// Steps back out of sign-in once it has succeeded.
+  ///
+  /// This screen is reached two ways: pushed from the session bar, and shown
+  /// as the app's first screen on an installed build. Only the first has
+  /// anything underneath it — popping the other would leave a black rectangle.
+  /// Signing in changes what the shell renders, so there is nothing else to do.
+  void _leave() {
+    final nav = Navigator.of(context);
+    if (nav.canPop()) nav.pop();
+  }
+
   Future<void> _tryPin() async {
     final store = context.read<AppStore>();
     final account = _picked;
@@ -61,7 +80,7 @@ class _SignInScreenState extends State<SignInScreen> {
     final ok = await store.signInWithPin(account.id, _pin);
     if (!mounted) return;
     if (ok) {
-      Navigator.of(context).pop();
+      _leave();
       return;
     }
     setState(() {
@@ -77,7 +96,7 @@ class _SignInScreenState extends State<SignInScreen> {
     final ok = await store.signInWithPassword(_username.text, _password.text);
     if (!mounted) return;
     if (ok) {
-      Navigator.of(context).pop();
+      _leave();
       return;
     }
     setState(() {
@@ -144,6 +163,18 @@ class _SignInScreenState extends State<SignInScreen> {
                   _error = null;
                 }),
               ),
+            if (widget.onBrowseAsCustomer != null) ...[
+              const SizedBox(height: 22),
+              TextButton.icon(
+                onPressed: widget.onBrowseAsCustomer,
+                icon: const Icon(Icons.restaurant_menu_rounded, size: 19),
+                label: Text(t.browseAsCustomer),
+                style: TextButton.styleFrom(
+                  foregroundColor: AppColors.inkSoft,
+                  minimumSize: const Size(double.infinity, 48),
+                ),
+              ),
+            ],
             const SizedBox(height: 26),
             // Which of the two this build is, and — when it is the demo by
             // accident — exactly which define was left out.

@@ -79,6 +79,30 @@ class AppText {
         'ការសាកល្បងនៅតែមាននៅលើឧបករណ៍នេះ បើអ្នកចង់ត្រឡប់មកវិញ។',
       );
   String get password => _('Password', 'ពាក្យសម្ងាត់');
+  String get forgotPassword =>
+      _('Forgotten your password?', 'ភ្លេចពាក្យសម្ងាត់?');
+  String get resetPasswordTitle =>
+      _('Reset your password', 'កំណត់ពាក្យសម្ងាត់ឡើងវិញ');
+  String get resetPasswordBlurb => _(
+        'Type the email address you sign in with and we will send you a link '
+        'to set a new password.',
+        'បញ្ចូលអាសយដ្ឋានអ៊ីមែលដែលអ្នកប្រើចូល យើងនឹងផ្ញើតំណដើម្បីកំណត់ពាក្យសម្ងាត់ថ្មី។',
+      );
+  String get sendResetLink => _('Send the link', 'ផ្ញើតំណ');
+  String get resetLinkSent => _(
+        'If that address signs in here, a link is on its way. Check your inbox '
+        'and your spam folder.',
+        'បើអាសយដ្ឋាននោះប្រើចូលនៅទីនេះ តំណកំពុងផ្ញើទៅ។ '
+        'សូមពិនិត្យប្រអប់សំបុត្រ និងសារឥតបានការ។',
+      );
+  String get staffAskYourOwner => _(
+        'Kitchen and cashier PINs are reset by the owner, on the Staff screen.',
+        'លេខសម្ងាត់ផ្ទះបាយ និងអ្នកគិតលុយ ត្រូវកំណត់ដោយម្ចាស់ហាងនៅផ្ទាំងបុគ្គលិក។',
+      );
+  String get chooseNewPassword =>
+      _('Choose a new password', 'ជ្រើសពាក្យសម្ងាត់ថ្មី');
+  String get newPasswordSaved =>
+      _('Password changed. You are signed in.', 'បានប្តូរពាក្យសម្ងាត់។ អ្នកបានចូលហើយ។');
   String get adminSignIn => _('Owner / admin sign in', 'ម្ចាស់ហាង ចូលប្រើ');
   String get demoCredentials =>
       _('Demo accounts', 'គណនីសាកល្បង');

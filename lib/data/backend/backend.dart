@@ -131,6 +131,27 @@ abstract class Backend {
   /// bare word is the older per-restaurant username, which still works.
   Future<StaffAccount?> signInWithPassword(String identifier, String password);
   Future<StaffAccount?> signInWithPin(String accountId, String pin);
+
+  /// Emails an owner a link to set a new password.
+  ///
+  /// Owners only. Kitchen and cashier staff have no address — they tap a name
+  /// and key in a PIN — and the owner resets those from the staff screen. An
+  /// owner locked out of their own restaurant has nobody above them to ask,
+  /// which is the whole reason this exists.
+  ///
+  /// Deliberately says nothing about whether the address belongs to anybody.
+  /// A form that answers that question is a way to find out who banks here.
+  Future<void> sendPasswordReset(String email);
+
+  /// Sets a new password for whoever the recovery link signed in.
+  ///
+  /// Only meaningful while a recovery session is open — the link in the email
+  /// is what authorises this, and it expires.
+  Future<void> setNewPassword(String password);
+
+  /// Fires when a recovery link has been followed and a new password is now
+  /// wanted. Never fires on a backend with no email behind it.
+  Stream<void> get passwordRecovery;
   Future<void> signOut();
 
   // ----------------------------------------------------------------- orders

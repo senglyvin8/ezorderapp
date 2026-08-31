@@ -557,6 +557,25 @@ class AppStore extends ChangeNotifier {
     return true;
   }
 
+  /// Asks for a link that lets an owner set a new password.
+  ///
+  /// Owners only, because they are the only people who sign in with an
+  /// address. A cashier who has forgotten their PIN asks the owner, who resets
+  /// it from the staff screen — an owner locked out has nobody to ask, which
+  /// is the gap this closes.
+  Future<void> sendPasswordReset(String email) =>
+      _backend.sendPasswordReset(email);
+
+  /// Sets the new password, once a recovery link has been followed.
+  Future<void> setNewPassword(String password) async {
+    await _backend.setNewPassword(password);
+    _data = _backend.current;
+    _commit();
+  }
+
+  /// Fires when a recovery link has been opened and a new password is wanted.
+  Stream<void> get passwordRecovery => _backend.passwordRecovery;
+
   Future<void> signOut() async {
     await _backend.signOut();
     _data = _backend.current;

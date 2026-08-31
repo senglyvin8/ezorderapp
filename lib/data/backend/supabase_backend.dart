@@ -8,6 +8,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../config/app_config.dart';
 import '../../config/backend_config.dart';
 import '../../models/cart_line.dart';
+import '../../models/email_address.dart';
 import '../../models/menu_category.dart';
 import '../../models/menu_item.dart';
 import '../../models/order.dart';
@@ -348,6 +349,36 @@ class SupabaseBackend implements Backend {
   @override
   Future<StaffAccount?> signInWithPin(String accountId, String pin) =>
       _guard(() => _signIn(BackendConfig.loginEmail(accountId), pin));
+
+  @override
+  Future<void> sendPasswordReset(String email) => _guard(() async {
+        final address = EmailAddress.normalize(email);
+        if (address == null) {
+          throw StateError('That does not look like an email address');
+        }
+        // Supabase answers the same whether or not the address is registered,
+        // and so does this. Telling somebody "no such account" turns the form
+        // into a way of finding out who has one.
+        await _client.auth.resetPasswordForEmail(
+          address,
+          redirectTo: BackendConfig.passwordResetUrl,
+        );
+      });
+
+  @override
+  Future<void> setNewPassword(String password) => _guard(() async {
+        // Mirrors the rule in 0012 and in addStaff, so a password set this way
+        // is held to what a password set any other way is held to.
+        if (password.trim().length < 8) {
+          throw StateError('A password must be at least 8 characters');
+        }
+        await _client.auth.updateUser(UserAttributes(password: password));
+      });
+
+  @override
+  Stream<void> get passwordRecovery => _client.auth.onAuthStateChange
+      .where((s) => s.event == AuthChangeEvent.passwordRecovery)
+      .map((_) {});
 
   Future<StaffAccount?> _signIn(String email, String secret) async {
     try {

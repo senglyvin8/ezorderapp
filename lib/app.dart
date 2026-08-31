@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -8,6 +10,7 @@ import 'data/guest_mode.dart';
 import 'data/merchant_binding.dart';
 import 'screens/admin/admin_root.dart';
 import 'screens/cashier/cashier_root.dart';
+import 'screens/auth/password_reset.dart';
 import 'screens/auth/sign_in_screen.dart';
 import 'screens/customer/customer_root.dart';
 import 'screens/kitchen/kitchen_root.dart';
@@ -101,6 +104,29 @@ class AppShell extends StatefulWidget {
 }
 
 class _AppShellState extends State<AppShell> {
+  StreamSubscription<void>? _recovery;
+
+  /// True from the moment a recovery link is followed until a new password is
+  /// set. It goes in front of everything, including the staff gate: the link
+  /// opens a session that can do exactly one useful thing, and dropping
+  /// somebody onto a sign-in screen they have just told us they cannot use
+  /// would be the one place the app has no answer.
+  bool _settingNewPassword = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _recovery = context.read<AppStore>().passwordRecovery.listen((_) {
+      if (mounted) setState(() => _settingNewPassword = true);
+    });
+  }
+
+  @override
+  void dispose() {
+    unawaited(_recovery?.cancel());
+    super.dispose();
+  }
+
   /// Set when somebody on the sign-in screen says they are a customer.
   ///
   /// Staff need the customer view — to demo it, or to order for a walk-in —
@@ -131,6 +157,12 @@ class _AppShellState extends State<AppShell> {
     final store = context.watch<AppStore>();
     final user = store.currentUser;
     final staffMode = store.mode == AppMode.staff && user != null;
+
+    if (_settingNewPassword) {
+      return NewPasswordScreen(
+        onDone: () => setState(() => _settingNewPassword = false),
+      );
+    }
 
     if (_staffGate(store)) {
       return SignInScreen(

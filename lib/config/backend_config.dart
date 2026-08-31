@@ -97,6 +97,19 @@ abstract class BackendConfig {
 
   static bool get hasPublicUrl => publicUrl.isNotEmpty;
 
+  /// Where a password-recovery link should land.
+  ///
+  /// The hosted web app, deliberately, even when the reset was asked for on a
+  /// phone. A link that opens an installed app needs universal links set up on
+  /// both stores and a signed association file; a link that opens a web page
+  /// works from any email client on any device today. The owner sets a new
+  /// password there and signs into the phone with it.
+  ///
+  /// Null when this build has no public address, which is every demo build —
+  /// and those have nothing to email anybody about.
+  static String? get passwordResetUrl =>
+      hasPublicUrl ? publicUrl.replaceAll(RegExp(r'/+$'), '') : null;
+
   /// The link a table's QR code should carry.
   ///
   /// Hash form on purpose: Flutter web routes on the fragment unless told

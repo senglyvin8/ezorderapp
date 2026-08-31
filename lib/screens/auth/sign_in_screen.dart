@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../data/app_store.dart';
+import 'password_reset.dart';
 import '../../data/demo_data.dart';
 import '../../data/merchant_binding.dart';
 import '../../l10n/app_text.dart';
@@ -502,6 +503,16 @@ class _AdminForm extends StatelessWidget {
         FilledButton(
           onPressed: busy ? null : onSubmit,
           child: Text(busy ? t.checking : t.signIn),
+        ),
+        // An owner locked out of their own restaurant has nobody above them to
+        // ask, so the way back in belongs on the screen that turned them away.
+        TextButton(
+          onPressed: busy ? null : () => showPasswordResetSheet(context),
+          style: TextButton.styleFrom(
+            foregroundColor: AppColors.inkSoft,
+            minimumSize: const Size(double.infinity, 44),
+          ),
+          child: Text(t.forgotPassword),
         ),
       ],
     );

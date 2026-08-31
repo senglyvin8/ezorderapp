@@ -243,6 +243,25 @@ class LocalBackend implements Backend {
     return account;
   }
 
+  /// There is no email on a device with no service behind it, so there is
+  /// nothing to send and nobody to send it. Said plainly rather than failing
+  /// silently: the demo prints its own credentials on the sign-in screen, so
+  /// nobody using it is actually locked out.
+  @override
+  Future<void> sendPasswordReset(String email) async {
+    throw StateError(
+      'The demo has no email behind it. The sign-in details are on this screen.',
+    );
+  }
+
+  @override
+  Future<void> setNewPassword(String password) async {
+    throw StateError('The demo has no password reset.');
+  }
+
+  @override
+  Stream<void> get passwordRecovery => const Stream.empty();
+
   @override
   Future<void> signOut() async {
     _currentUserId = null;

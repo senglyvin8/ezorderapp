@@ -381,56 +381,35 @@ class SupabaseBackend implements Backend {
       .map((_) {});
 
   @override
-  Future<void> sendSignUpCode(String email) => _guard(() async {
-        final address = EmailAddress.normalize(email);
-        if (address == null) {
-          throw StateError('That does not look like an email address');
-        }
-        // shouldCreateUser is what makes this signing up rather than signing
-        // in. The account it creates can do nothing until the code comes back
-        // and nothing at all until it claims a restaurant.
-        await _client.auth.signInWithOtp(
-          email: address,
-          shouldCreateUser: true,
-        );
-      });
-
-  @override
-  Future<bool> verifySignUpCode(String email, String code) => _guard(() async {
-        final address = EmailAddress.normalize(email);
-        if (address == null) return false;
-        try {
-          await _client.auth.verifyOTP(
-            email: address,
-            token: code.trim(),
-            type: OtpType.email,
-          );
-        } on AuthException {
-          // Wrong code, expired code, wrong address — one answer for all
-          // three, so none can be told apart by trying.
-          return false;
-        }
-        return _client.auth.currentUser != null;
-      });
-
-  @override
-  Future<void> claimRestaurant({
+  Future<void> requestSignUp({
+    required String email,
+    required String password,
     required String restaurantName,
     required String slug,
     String ownerName = '',
   }) =>
       _guard(() async {
-        await _client.rpc<String>('claim_restaurant', params: {
+        await _client.rpc<String>('request_signup', params: {
+          'p_email': email.trim(),
+          'p_password': password,
           'p_restaurant_name': restaurantName.trim(),
           'p_slug': slug.trim(),
           'p_owner_name': ownerName.trim(),
         });
-        // The device now serves the restaurant it just made.
-        BackendConfig.bindSlug(slug.trim().toLowerCase());
-        _restaurantId = null;
-        await _reload();
-        await _refreshCurrentUser();
-        await _resubscribe();
+      });
+
+  @override
+  Future<SignUpRequest?> mySignUpRequest() => _guard(() async {
+        final rows = await _client.rpc<List<dynamic>>('my_signup_request');
+        if (rows.isEmpty) return null;
+        final r = rows.first as Map<String, dynamic>;
+        return SignUpRequest(
+          status: SignUpStatus.fromWire(r['status'] as String?),
+          restaurantName: r['restaurant_name'] as String? ?? '',
+          slug: r['slug'] as String? ?? '',
+          note: r['note'] as String? ?? '',
+          askedAt: _toDate(r['created_at']),
+        );
       });
 
   @override

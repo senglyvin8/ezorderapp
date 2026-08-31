@@ -12,6 +12,7 @@ import 'screens/admin/admin_root.dart';
 import 'screens/cashier/cashier_root.dart';
 import 'screens/auth/password_reset.dart';
 import 'screens/auth/sign_in_screen.dart';
+import 'data/backend/backend.dart';
 import 'screens/auth/sign_up_screen.dart';
 import 'screens/customer/customer_root.dart';
 import 'screens/kitchen/kitchen_root.dart';
@@ -120,6 +121,27 @@ class _AppShellState extends State<AppShell> {
     _recovery = context.read<AppStore>().passwordRecovery.listen((_) {
       if (mounted) setState(() => _settingNewPassword = true);
     });
+    unawaited(_lookUpRequest());
+  }
+
+  /// Asks whether this device belongs to somebody waiting on an application.
+  ///
+  /// Once, at startup, and only on an installed build with a real database:
+  /// the web app is the diner's, and making every scanned QR code pay for a
+  /// round trip about a sign-up queue would be a poor trade.
+  Future<void> _lookUpRequest() async {
+    if (kIsWeb || _checkedRequest) return;
+    _checkedRequest = true;
+    final store = context.read<AppStore>();
+    if (store.isDemo || store.isSignedIn) return;
+    try {
+      final request = await store.mySignUpRequest();
+      if (mounted && request != null) {
+        setState(() => _pendingRequest = request);
+      }
+    } on StateError {
+      // A backend with no sign-up at all. Nothing to show.
+    }
   }
 
   @override
@@ -140,6 +162,12 @@ class _AppShellState extends State<AppShell> {
   /// Offered only on a build with a real database behind it — the demo has one
   /// restaurant and it is already open.
   bool _signingUp = false;
+
+  /// The application belonging to whoever is signed in, when they are waiting
+  /// on one. Looked up after sign-in, because an account with no restaurant is
+  /// otherwise indistinguishable from a broken one.
+  SignUpRequest? _pendingRequest;
+  bool _checkedRequest = false;
 
   /// Whether to meet this person with sign-in rather than a menu.
   ///
@@ -163,6 +191,20 @@ class _AppShellState extends State<AppShell> {
     final store = context.watch<AppStore>();
     final user = store.currentUser;
     final staffMode = store.mode == AppMode.staff && user != null;
+
+    // An applicant has an auth session and no staff row, so `isSignedIn` —
+    // which asks about the staff row — is false for them exactly as it is for
+    // a stranger. The request is what tells the two apart.
+    final waiting = _pendingRequest;
+    if (waiting != null && !store.isSignedIn) {
+      return AwaitingApprovalScreen(
+        request: waiting,
+        onSignOut: () async {
+          await store.signOut();
+          if (mounted) setState(() => _pendingRequest = null);
+        },
+      );
+    }
 
     if (_settingNewPassword) {
       return NewPasswordScreen(

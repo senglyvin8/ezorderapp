@@ -8,6 +8,38 @@ import '../../models/restaurant_table.dart';
 import '../../models/staff_account.dart';
 import '../../models/upgrade_request.dart';
 
+/// How far an application to join has got.
+enum SignUpStatus {
+  pending('PENDING'),
+  approved('APPROVED'),
+  rejected('REJECTED');
+
+  const SignUpStatus(this.wire);
+  final String wire;
+
+  static SignUpStatus fromWire(String? value) => SignUpStatus.values
+      .firstWhere((s) => s.wire == value, orElse: () => SignUpStatus.pending);
+}
+
+/// An application to join, as its applicant sees it.
+class SignUpRequest {
+  const SignUpRequest({
+    required this.status,
+    required this.restaurantName,
+    required this.slug,
+    this.note = '',
+    this.askedAt,
+  });
+
+  final SignUpStatus status;
+  final String restaurantName;
+  final String slug;
+
+  /// Why it was turned down, when it was. Empty otherwise.
+  final String note;
+  final DateTime? askedAt;
+}
+
 /// A failure worth trying again.
 ///
 /// The wifi dropped, the request timed out, DNS went odd mid-service. The
@@ -143,26 +175,24 @@ abstract class Backend {
   /// A form that answers that question is a way to find out who banks here.
   Future<void> sendPasswordReset(String email);
 
-  /// Emails a six-digit code to prove somebody owns an address.
+  /// Asks to join: an email, a password, and what the place is called.
   ///
-  /// The first half of signing up. Creates the account if it is new, which is
-  /// what makes this self-serve — but the account can do nothing until the
-  /// code is typed back, and nothing at all until it claims a restaurant.
-  Future<void> sendSignUpCode(String email);
-
-  /// Types the code back. Returns false when it is wrong or has expired.
-  Future<bool> verifySignUpCode(String email, String code);
-
-  /// Turns a confirmed address into a restaurant, and its owner into staff.
+  /// Creates an account that can do nothing — it has no restaurant and no
+  /// staff row, so every guarded function refuses it — and files a request for
+  /// somebody with console access to answer. Approval is what makes it real.
   ///
-  /// Only after [verifySignUpCode]. The database checks that the session is
-  /// not a diner's anonymous one, that the address is confirmed, and that the
-  /// account does not already work somewhere — see `0015_self_signup.sql`.
-  Future<void> claimRestaurant({
+  /// Deliberately no email anywhere in this: a form that cannot be submitted
+  /// until a message arrives is a form that stops working when the mail does.
+  Future<void> requestSignUp({
+    required String email,
+    required String password,
     required String restaurantName,
     required String slug,
     String ownerName = '',
   });
+
+  /// Where an applicant's request has got to, or null if they never made one.
+  Future<SignUpRequest?> mySignUpRequest();
 
   /// Whether a slug is well formed and unused. For saying "taken" while
   /// somebody types rather than after they commit.

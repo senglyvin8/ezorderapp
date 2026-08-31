@@ -87,13 +87,30 @@ class AppText {
         'ចាប់ផ្តើមទទួលការបញ្ជាទិញក្នុងពេលប៉ុន្មាននាទី។ មិនត្រូវការកាត ឬកិច្ចសន្យា — '
         'គម្រោងឥតគិតថ្លៃមានតុ ៥។',
       );
-  String get sendTheCode => _('Send me a code', 'ផ្ញើលេខកូដមកខ្ញុំ');
-  String codeSentTo(String email) =>
-      _('We sent a six-digit code to $email', 'យើងបានផ្ញើលេខកូដ ៦ ខ្ទង់ទៅ $email');
-  String get theCode => _('The code', 'លេខកូដ');
-  String get wrongCode =>
-      _('That code is wrong or has expired', 'លេខកូដខុស ឬផុតកំណត់');
-  String get resendTheCode => _('Send it again', 'ផ្ញើម្តងទៀត');
+  String get askToJoin => _('Send my request', 'ផ្ញើសំណើររបស់ខ្ញុំ');
+  String get requestSentTitle => _('Request sent', 'បានផ្ញើសំណើរ');
+  String get requestSentBody => _(
+        'We will look at it and set your restaurant up. Sign in with the email '
+        'and password you just chose to see how it is going.',
+        'យើងនឹងពិនិត្យ ហើយរៀបចំហាងរបស់អ្នក។ សូមចូលដោយអ៊ីមែល និងពាក្យសម្ងាត់ '
+        'ដែលអ្នកទើបជ្រើស ដើម្បីមើលដំណើរការ។',
+      );
+  String get awaitingApproval =>
+      _('Waiting to be approved', 'កំពុងរង់ចាំការអនុម័ត');
+  String get awaitingApprovalBody => _(
+        'Your request is with us. This screen becomes your restaurant as soon '
+        'as it is approved.',
+        'សំណើររបស់អ្នកនៅជាមួយយើង។ ផ្ទាំងនេះនឹងក្លាយជាហាងរបស់អ្នក '
+        'ភ្លាមៗពេលបានអនុម័ត។',
+      );
+  String get requestRefused =>
+      _('Request not approved', 'សំណើរមិនត្រូវបានអនុម័ត');
+  String get signUpRequests => _('Sign-up requests', 'សំណើរចុះឈ្មោះ');
+  String get approve => _('Approve', 'អនុម័ត');
+  String get reject => _('Reject', 'បដិសេធ');
+  String get rejectReason =>
+      _('Why? (they will see this)', 'ហេតុអ្វី? (ពួកគេនឹងឃើញ)');
+  String get noSignUpRequests => _('No requests waiting', 'គ្មានសំណើររង់ចាំទេ');
   String get yourName => _('Your name', 'ឈ្មោះរបស់អ្នក');
   String get webAddress => _('Web address', 'អាសយដ្ឋានគេហទំព័រ');
   String get webAddressBlurb => _(

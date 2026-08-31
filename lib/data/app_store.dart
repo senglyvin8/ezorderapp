@@ -578,29 +578,25 @@ class AppStore extends ChangeNotifier {
 
   // ------------------------------------------------------------- signing up
 
-  /// Emails a six-digit code to prove somebody owns an address.
-  Future<void> sendSignUpCode(String email) => _backend.sendSignUpCode(email);
-
-  /// Types the code back. False when it is wrong or has expired.
-  Future<bool> verifySignUpCode(String email, String code) =>
-      _backend.verifySignUpCode(email, code);
-
-  /// Turns a confirmed address into a restaurant. Signs the owner in on the
-  /// way, because they have just proved who they are twice over.
-  Future<void> claimRestaurant({
+  /// Asks to join. Creates an account that can do nothing until somebody with
+  /// console access approves it.
+  Future<void> requestSignUp({
+    required String email,
+    required String password,
     required String restaurantName,
     required String slug,
     String ownerName = '',
-  }) async {
-    await _backend.claimRestaurant(
-      restaurantName: restaurantName,
-      slug: slug,
-      ownerName: ownerName,
-    );
-    _data = _backend.current;
-    _mode = AppMode.staff;
-    _commit();
-  }
+  }) =>
+      _backend.requestSignUp(
+        email: email,
+        password: password,
+        restaurantName: restaurantName,
+        slug: slug,
+        ownerName: ownerName,
+      );
+
+  /// Where this account's application has got to, or null if it never applied.
+  Future<SignUpRequest?> mySignUpRequest() => _backend.mySignUpRequest();
 
   Future<bool> slugAvailable(String slug) => _backend.slugAvailable(slug);
 

@@ -22,7 +22,13 @@ class TableLink {
 
   /// Null when [route] is not a table link — every other path in the app.
   static TableLink? parse(String? route) {
-    final segments = Uri.parse(route ?? '/').pathSegments;
+    // A trailing slash leaves an empty final segment, and some readers and
+    // browsers add one. Dropping empties also forgives a doubled slash, which
+    // costs nothing: no part of this path is allowed to be blank anyway.
+    final segments = Uri.parse(route ?? '/')
+        .pathSegments
+        .where((s) => s.isNotEmpty)
+        .toList();
     if (segments.length != 4) return null;
     if (segments[0] != 'order' && segments[0] != 'restaurant') return null;
     if (segments[2] != 'table') return null;

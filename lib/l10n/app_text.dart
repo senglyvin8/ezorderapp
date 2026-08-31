@@ -118,12 +118,6 @@ class AppText {
       );
   String get requestRefused =>
       _('Request not approved', 'សំណើរមិនត្រូវបានអនុម័ត');
-  String get signUpRequests => _('Sign-up requests', 'សំណើរចុះឈ្មោះ');
-  String get approve => _('Approve', 'អនុម័ត');
-  String get reject => _('Reject', 'បដិសេធ');
-  String get rejectReason =>
-      _('Why? (they will see this)', 'ហេតុអ្វី? (ពួកគេនឹងឃើញ)');
-  String get noSignUpRequests => _('No requests waiting', 'គ្មានសំណើររង់ចាំទេ');
   String get yourName => _('Your name', 'ឈ្មោះរបស់អ្នក');
   String get webAddress => _('Web address', 'អាសយដ្ឋានគេហទំព័រ');
   String get webAddressBlurb => _(
@@ -132,9 +126,14 @@ class AppText {
         'នេះនឹងស្ថិតនៅក្នុងកូដ QR ដែលបោះពុម្ព ដូច្នេះមិនអាចប្តូរក្រោយបានទេ '
         'លុះត្រាតែបោះពុម្ពឡើងវិញ។',
       );
+  String get webAddressNeedsLatin => _(
+        'Type a web address using English letters and numbers — a Khmer name '
+        'cannot go in a link.',
+        'សូមបញ្ចូលអាសយដ្ឋានគេហទំព័រដោយប្រើអក្សរឡាតាំង និងលេខ — '
+        'ឈ្មោះជាភាសាខ្មែរមិនអាចដាក់ក្នុងតំណបានទេ។',
+      );
   String get addressTaken => _('That address is taken', 'អាសយដ្ឋាននេះមានគេប្រើហើយ');
   String get addressFree => _('Available', 'អាចប្រើបាន');
-  String get openMyRestaurant => _('Open my restaurant', 'បើកហាងរបស់ខ្ញុំ');
   String get alreadyHaveAccount =>
       _('I already have an account', 'ខ្ញុំមានគណនីរួចហើយ');
 

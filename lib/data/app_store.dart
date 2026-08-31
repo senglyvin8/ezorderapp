@@ -829,7 +829,29 @@ class AppStore extends ChangeNotifier {
   // ----------------------------------------------------------------- orders
 
   /// Sends this device's cart to the kitchen.
+  /// True while an order is on its way. Nothing else may be sent until it
+  /// lands, one way or the other.
+  bool _submitting = false;
+
   Future<Order> submitOrder() async {
+    // A second tap while the first is still in flight used to mint a second
+    // idempotency key, which is precisely the case the key exists to stop:
+    // two keys look like two orders to the database, and the customer is
+    // charged twice. The button is disabled while busy, but a slow network and
+    // an impatient thumb get past that, and the outbox made it worse — both
+    // attempts queue and both are sent when the wifi returns.
+    if (_submitting) {
+      throw StateError('That order is already on its way');
+    }
+    _submitting = true;
+    try {
+      return await _submitOrder();
+    } finally {
+      _submitting = false;
+    }
+  }
+
+  Future<Order> _submitOrder() async {
     final key = _uid('key');
     final lines = [..._cart];
     final note = _cartNote;

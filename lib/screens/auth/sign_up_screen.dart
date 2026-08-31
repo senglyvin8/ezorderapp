@@ -119,6 +119,12 @@ class _SignUpScreenState extends State<SignUpScreen> {
     }
   }
 
+  /// The restaurant has a name, but nothing in it survives into a web address.
+  /// True for a name written entirely in Khmer, which is the ordinary case
+  /// here rather than an oddity.
+  bool get _needsLatinAddress =>
+      _restaurant.text.trim().isNotEmpty && _slug.text.trim().isEmpty;
+
   bool get _ready =>
       EmailAddress.isValid(_email.text) &&
       _password.text.trim().length >= 8 &&
@@ -245,15 +251,21 @@ class _SignUpScreenState extends State<SignUpScreen> {
         ),
         const SizedBox(height: 6),
         Text(
-          _slug.text.trim().length < 3
-              ? t.webAddressBlurb
-              : (_slugFree == null
-                  ? t.checking
-                  : (_slugFree! ? t.addressFree : t.addressTaken)),
+          // A name written only in Khmer leaves nothing a URL can carry, so
+          // the suggestion comes out empty and the button stays dead. Saying
+          // why beats leaving somebody to guess what the form wants — and in
+          // this market that is not an edge case, it is the common one.
+          _needsLatinAddress
+              ? t.webAddressNeedsLatin
+              : _slug.text.trim().length < 3
+                  ? t.webAddressBlurb
+                  : (_slugFree == null
+                      ? t.checking
+                      : (_slugFree! ? t.addressFree : t.addressTaken)),
           style: TextStyle(
             fontSize: 13.5,
             fontWeight: _slugFree == null ? FontWeight.w500 : FontWeight.w600,
-            color: _slugFree == false
+            color: _slugFree == false || _needsLatinAddress
                 ? AppColors.danger
                 : (_slugFree == true
                     ? AppColors.statusReady

@@ -394,10 +394,17 @@ class LocalBackend implements Backend {
   Future<void> resetStaffSecret(String id, String secret) async {
     _require(_canManage, 'manage staff');
     final target = _accounts.where((a) => a.id == id).firstOrNull;
-    if (target != null &&
-        !target.usesPassword &&
-        secret.length != StaffAccount.pinLength) {
-      throw StateError('A PIN must be ${StaffAccount.pinLength} digits');
+    if (target != null) {
+      // Held to whatever that account actually signs in with. Without the
+      // first branch a six-digit PIN sailed through as somebody's password,
+      // two characters under the rule every other path enforces.
+      if (target.usesPassword) {
+        if (secret.trim().length < 8) {
+          throw StateError('A password must be at least 8 characters');
+        }
+      } else if (secret.length != StaffAccount.pinLength) {
+        throw StateError('A PIN must be ${StaffAccount.pinLength} digits');
+      }
     }
     _accounts =
         _accounts.map((a) => a.id == id ? a.withSecret(secret) : a).toList();
